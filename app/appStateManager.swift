@@ -1,69 +1,80 @@
 import SwiftUI
 
-// This matches your "JSON Contract" exactly
-struct SafetyRequest: Codable {
-    let substance: String
-    let medication: String
-    let heart_rate: Int
-    let breathing_rate: Int
-    let hrv_sdnn: Double
-    let stress_index: Int
+// MARK: - Response Models (Matching Python JSON)
+struct VitalScoreResponse: Codable {
+    let danger_level: String
+    let color: String
+    let risk_score: Int
+    let status: String
+    let vitals_confirmed: VitalsConfirmed
 }
 
-struct MedCheckRequest: Codable {
-    //TODO: Update when sergei does
-    let medication: str
+struct VitalsConfirmed: Codable {
+    let hr: Int
+    let br: Int
 }
 
+struct MedResearchResponse: Codable {
+    let found: Bool
+    let medication: String?
+    let conflict: Bool
+    let risk: String?
+    let reason: String?
+    let ai_analysis: String?
+}
+
+// MARK: - App State Manager
 class AppStateManager: ObservableObject {
     @Published var errorMessage: String? = nil
-
+    @Published var isRequesting: Bool = false
+    
+    // Results from API
     @Published var latestMedAnalysis: MedResearchResponse? = nil
     @Published var latestVitalAnalysis: VitalScoreResponse? = nil
 
+    // User Data
     @Published var selectedSubstance: String = "Alcohol"
     @Published var scannedMedication: String? = nil
     
-    // Vitals from Presage
+    // Vitals from Presage SDK
     @Published var currentBPM: Int = 0
     @Published var currentBR: Int = 0
     @Published var currentHRV: Double = 0.0
     @Published var stressLevel: Int = 0
 
-    @Published var latestAnalysis: AnalysisResponse? = nil
-    @Published var isRequesting: Bool = false
-
+    // Emergency logic based on the new risk_score from Python
     var isEmergencyState: Bool {
-        return (latestAnalysis?.riskLevel ?? 0) > 7
+        return (latestVitalAnalysis?.risk_score ?? 0) > 7
     }
 
-    // TODO: Update these as teammates change their local IPs
-    let tab1URL = "http://10.200.X.XXX:8000/check-meds" // Placeholder for now
-    let tab2URL = "http://10.200.8.188:8000/score-vitals"
+    // UPDATE THIS with your Ngrok link!
+    let baseURL = "https://your-ngrok-id.ngrok-free.app"
+    
+    var tab1URL: String { "\(baseURL)/check-alcohol-risk" }
+    var tab2URL: String { "\(baseURL)/score-vitals" }
 
     @MainActor
     func runMedicationCheck(name: String) async {
         self.isRequesting = true
         let payload = ["medication": name]
         do {
-            // Note we specify the type: MedResearchResponse
             self.latestMedAnalysis = try await APIClient.sendDynamicData(
                 fullURL: tab1URL, 
                 payload: payload
             )
-        }catch {
+        } catch {
             print("Research API Error: \(error)")
-            self.errorMessage = "Failed to analyze medication. Please try again." // You can use this in your UI to show an alert
+            self.errorMessage = "Medication check failed."
         }
         self.isRequesting = false
     }
 
-    // TAB 2: Talk to 'vital_monitor.py'
     @MainActor
     func runVitalCheck() async {
         self.isRequesting = true
         let payload: [String: Any] = [
             "substance": selectedSubstance,
+            "medication": scannedMedication ?? "None",
             "heart_rate": currentBPM,
             "breathing_rate": currentBR,
             "hrv_sdnn": currentHRV,
@@ -75,9 +86,9 @@ class AppStateManager: ObservableObject {
                 fullURL: tab2URL, 
                 payload: payload
             )
-        }catch {
+        } catch {
             print("Monitor API Error: \(error)")
-            self.errorMessage = "Failed to analyze vitals. Please try again." // You can use this in your UI to show an alert
+            self.errorMessage = "Vital analysis failed."
         }
         self.isRequesting = false
     }
