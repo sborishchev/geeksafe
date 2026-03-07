@@ -1,108 +1,110 @@
-# expected api input:
+# TAB 2 FLOW: 
+# Presage Video Scan -> Extract Vitals -> FastAPI -> Return Risk JSON
+# Expected API Input:
 # {
 #   "substance": "alcohol",
 #   "medication": "Xanax",
-#   "heart_rate": 80,
-#   "breathing_rate": 16,
-#   "hrv_sdnn": 45.5,
-#   "stress_index": 20
+#   "heart_rate": 85,
+#   "breathing_rate": 10,
+#   "hrv_sdnn": 40.2,
+#   "stress_index": 75
 # }
 
 import os
-from typing import List, Optional
+from typing import Optional
 from fastapi import FastAPI
 from pydantic import BaseModel
-import google.generativeai as genai
+from google import genai
 from dotenv import load_dotenv
 
 # ---------- INITIALIZATION ----------
-# Load environment variables and configure Gemini AI
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel('gemini-1.5-flash')
+# Using the Gemini 2.0 client for advanced reasoning
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Initialize FastAPI
 app = FastAPI()
 
-
 # ---------- REQUEST MODEL ----------
-# Defines the expected flat JSON structure from the mobile frontend
-# requires: substance be a string, vitals be integers/floats
-class BlackboxRequest(BaseModel):
+class VitalsRequest(BaseModel):
     substance: str
-    medication: Optional[str] = None  # Medication name is optional
+    medication: Optional[str] = "None"
     heart_rate: int
     breathing_rate: int
     hrv_sdnn: float
     stress_index: int
 
-
 # ---------- RISK ENGINE ----------
-# Calculates safety status based on biometric thresholds and substance use
-# requires: heart_rate, breathing_rate, and stress_index as numeric values
-# returns: a dictionary containing risk_level and associated UI color
-def calculate_risk(substance, br, hr, stress):
+# Processes the physiological "Scan video" data
+# requires: br and hr as integers from Presage SDK
+# returns: status string and hex color code
+def evaluate_physiological_risk(substance, br, hr, stress):
     status = "STABLE"
-    color = "#34C759"  # Green
+    color = "#34C759" # Green
 
-    # Check for Respiratory Depression (Alcohol + Low Breathing)
+    # Logic: Alcohol + Respiratory Depression (BR < 12)
     if substance.lower() == "alcohol" and br < 12:
         status = "DANGER"
-        color = "#FF3B30"  # Red
+        color = "#FF3B30" # Red
     
-    # Check for Tachycardia or High Stress
+    # Logic: High Heart Rate or Peak Stress
     elif hr > 130 or stress > 80:
         status = "CAUTION"
-        color = "#FFCC00"  # Yellow
+        color = "#FFCC00" # Yellow
         
     return status, color
 
-
-# ---------- AI EXPLANATION ----------
-# Generates a clinical safety warning using Gemini AI
-# returns: string containing a short, clinical warning
-def get_ai_warning(med, sub, hr, br, stress):
-    med_text = f"taking {med}" if med else "not taking any medication"
-    
-    prompt = (f"User is {med_text} and using {sub}. "
-              f"Vitals: HR {hr}, BR {br}, Stress {stress}. "
-              f"Give a 10-word clinical safety warning:")
+# ---------- AI ANALYSIS ----------
+# Brief clinical summary of the vitals scan
+def get_vitals_explanation(med, sub, hr, br, stress):
+    prompt = (
+        f"Briefly explain the risk of {sub} use with these vitals: "
+        f"HR {hr}, BR {br}, Stress {stress}. Meds: {med}. "
+        f"Max 150 characters."
+    )
     
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
         return response.text.strip()
     except Exception:
-        return "Vitals monitored. Stay alert."
+        return "Vitals monitored. Seek help if breathing becomes difficult."
 
-
-# ---------- MAIN ENDPOINT ----------
-# Processes incoming vitals and returns the final safety assessment
+# ---------- TAB 2 MAIN ENDPOINT ----------
 @app.post("/score-vitals")
-async def score_vitals(request_data: BlackboxRequest):
+async def score_vitals(request: VitalsRequest):
     
-    # Extract values from the request
-    hr = request_data.heart_rate
-    br = request_data.breathing_rate
-    med = request_data.medication
-    sub = request_data.substance
-    stress = request_data.stress_index
+    # 1. Run the Risk Engine on extracted vitals
+    danger_level, ui_color = evaluate_physiological_risk(
+        request.substance, 
+        request.breathing_rate, 
+        request.heart_rate, 
+        request.stress_index
+    )
 
-    # Determine risk level and UI color
-    status, color = calculate_risk(sub, br, hr, stress)
+    # 2. Generate the AI status message
+    ai_status = get_vitals_explanation(
+        request.medication,
+        request.substance,
+        request.heart_rate,
+        request.breathing_rate,
+        request.stress_index
+    )
 
-    # Get AI-generated safety analysis
-    message = get_ai_warning(med, sub, hr, br, stress)
-
+    # 3. Return the exact JSON file format requested
     return {
-        "risk_level": status,
-        "ui_color": color,
-        "display_message": message
+        "danger_level": danger_level,
+        "color": ui_color,
+        "status": ai_status,
+        "vitals_confirmed": {
+            "hr": request.heart_rate,
+            "br": request.breathing_rate
+        }
     }
-
 
 # ---------- SERVER START ----------
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 GeekSafe Blackbox is starting...")
-    # host="0.0.0.0" allows external devices (iPhone) to connect via local IP
+    print("🚀 Tab 2 Backend: Vitals Processing Live...")
     uvicorn.run(app, host="0.0.0.0", port=8000)
