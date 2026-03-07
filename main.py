@@ -22,7 +22,7 @@ filename = "rules.json"
 #   "medication": "<generic_medication_name>",
 #   "brand": "<brand_name_or_null>",
 #   "drug_class": "<drug_class_name>",
-#   "substance": "alcohol" or null,
+#   "substance": ["subtances", "subtances"] or null,
 #   "conflict": true or false,
 #   "risk": "<risk_level_from_rules_json_or_null>",
 #   "reason": "<reason_from_rules_json_or_null>",
@@ -53,7 +53,7 @@ def normalize_text(text):
 # or a brand name in the provided dictionary
 # returns:
 # {
-#   "match_type": "generic" or "brand",
+#   "match_type": "generic" or "brand", 
 #   "medication": { ...original medication dict... }
 # }
 def find_medicine(data, query):
@@ -80,7 +80,7 @@ def find_medicine(data, query):
 
 def find_drug_class(data, drug_class):
     for drug in data["rules"]:
-        if drug["drug_class"] == drug_class and drug["substance"] == "alcohol":
+        if drug["drug_class"] == drug_class:
             return drug
     return None
 
@@ -119,7 +119,7 @@ def risk_alcohol(query, data):
         "medication": matched_medication["name"],
         "brand": matched_medication.get("brand"),
         "drug_class": matched_medication["drug_class"],
-        "substance": "alcohol",
+        "substance": matched_medication.get("substance", rule.get("substance")),
         "conflict": True,
         "risk": rule["risk"],
         "reason": rule["reason"]
