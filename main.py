@@ -1,32 +1,54 @@
-import json
-from google import genai
-_api_key = "AIzaSyBePlruplZm-0UYhcEtfVetooCbF33kkyE"
+# expected api input:
+# {
+#   "medication":"<active_ingredient_name>"
+# }
 
-client = genai.Client(api_key = _api_key)
+import json
+from fastapi import FastAPI
+from pydantic import BaseModel
+from google import genai
+import os
+
+# initialize FastAPI
+app = FastAPI()
+
+# Gemini client
+client = genai.Client(api_key=os.getenv("API_KEY"))
 
 filename = "rules.json"
 
 
+# ---------- REQUEST MODEL ----------
+class MedicationRequest(BaseModel):
+    medication: str
+
+
+# ---------- LOAD JSON ----------
 def extract_json(filename):
     try:
         with open(filename, "r") as file:
-            data = json.load(file)
-            return data
+            return json.load(file)
     except FileNotFoundError:
-        print("Error: file not found,", filename)
         return None
     except json.JSONDecodeError:
-        print("Failed to decode JSON, invalid format")
         return None
 
 
+# ---------- FIND MEDICATION ----------
 def find_medicine(data, medicine_name):
+    medicine_name = medicine_name.lower()
+
     for medication in data["medications"]:
-        if medication["name"] == medicine_name:
+        if medication["name"].lower() == medicine_name:
             return medication
+
+        if medication.get("brand", "").lower() == medicine_name:
+            return medication
+
     return None
 
 
+# ---------- FIND RULE ----------
 def find_drug_class(data, drug_class):
     for drug in data["rules"]:
         if drug["drug_class"] == drug_class and drug["substance"] == "alcohol":
@@ -34,11 +56,11 @@ def find_drug_class(data, drug_class):
     return None
 
 
-# risk_alcohol(medication, data) calculates the risk value of a certain
-# medication with alcohol, and returns a JSON object containing the risk
-# level and the conflicting drug class rule.
+# ---------- RISK ENGINE ----------
 def risk_alcohol(medication, data):
+
     val = find_medicine(data, medication)
+
     if not val:
         return {
             "found": False,
@@ -46,10 +68,12 @@ def risk_alcohol(medication, data):
         }
 
     rule = find_drug_class(data, val["drug_class"])
+
     if not rule:
         return {
             "found": True,
             "medication": val["name"],
+            "brand": val.get("brand"),
             "drug_class": val["drug_class"],
             "conflict": False,
             "message": "No alcohol conflict found"
@@ -67,19 +91,38 @@ def risk_alcohol(medication, data):
     }
 
 
-def get_ai_analysis(data):
+# ---------- AI EXPLANATION ----------
+def get_ai_analysis(result):
+
+    if not result.get("conflict"):
+        return None
+
     response = client.models.generate_content(
-        model="gemini-3-flash-preview",
-        contents = f"briefly analyze the risks of taking {data['medication']} by brand {data['brand']} with {data['substance']}, be concise less than 200 characters"
+        model="gemini-2.0-flash",
+        contents=f"Briefly explain the risk of mixing {result['medication']} (brand {result.get('brand','unknown')}) with alcohol. Max 200 characters."
     )
-    
-    return(response.text)
+
+    return response.text
 
 
-data = extract_json(filename)
+# ---------- HEALTH CHECK ----------
+@app.get("/")
+def home():
+    return {"status": "GeekSafe backend running"}
 
 
-if data is not None:
-    result = (risk_alcohol("alprazolam", data))
-    print(result)
-    print(get_ai_analysis(result))
+# ---------- MAIN ENDPOINT ----------
+@app.post("/check-alcohol-risk")
+def check_alcohol_risk(request: MedicationRequest):
+
+    data = extract_json(filename)
+
+    if data is None:
+        return {"error": "Could not load rules.json"}
+
+    result = risk_alcohol(request.medication, data)
+
+    if result.get("conflict"):
+        result["ai_analysis"] = "test"
+
+    return result
