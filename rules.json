@@ -2,57 +2,57 @@
   "rules": [
     {
       "drug_class": "benzodiazepine",
-      "substance": ["alcohol","cannabis"],
+      "substance": ["alcohol", "cannabis"],
       "risk": "dangerous",
-      "reason": "Severe sedation and respiratory depression"
+      "reason": "Additive sedation and impairment"
     },
     {
       "drug_class": "opioid",
-      "substance": "alcohol",
+      "substance": ["alcohol", "cannabis"],
       "risk": "dangerous",
-      "reason": "Respiratory depression and overdose risk"
+      "reason": "Additive sedation and overdose risk"
     },
     {
       "drug_class": "sedative_hypnotic",
-      "substance": "alcohol",
+      "substance": ["alcohol"],
       "risk": "dangerous",
-      "reason": "Extreme sedation and breathing suppression"
+      "reason": "Strong additive sedation and breathing suppression risk"
     },
     {
       "drug_class": "antihistamine_sedating",
-      "substance": "alcohol",
+      "substance": ["alcohol"],
       "risk": "caution",
       "reason": "Increased drowsiness and impaired coordination"
     },
     {
       "drug_class": "ssri",
-      "substance": "alcohol",
+      "substance": ["alcohol"],
       "risk": "caution",
-      "reason": "Increased dizziness and worsened depression"
+      "reason": "May increase side effects such as dizziness or drowsiness"
     },
     {
       "drug_class": "snri",
-      "substance": "alcohol",
+      "substance": ["alcohol"],
       "risk": "caution",
-      "reason": "Enhanced side effects and impaired judgment"
+      "reason": "May increase side effects such as dizziness or drowsiness"
     },
     {
       "drug_class": "antipsychotic",
-      "substance": "alcohol",
+      "substance": ["alcohol"],
       "risk": "dangerous",
-      "reason": "Severe CNS depression and coordination loss"
+      "reason": "Alcohol can increase sedation and impairment"
     },
     {
       "drug_class": "muscle_relaxant",
-      "substance": "alcohol",
+      "substance": ["alcohol"],
       "risk": "dangerous",
-      "reason": "Extreme sedation and impaired breathing"
+      "reason": "Alcohol can worsen drowsiness and impairment"
     },
     {
       "drug_class": "sleep_medication",
-      "substance": "alcohol",
+      "substance": ["alcohol", "cannabis"],
       "risk": "dangerous",
-      "reason": "Risk of unconsciousness and respiratory depression"
+      "reason": "Strong additive sedative effects"
     }
   ],
 
