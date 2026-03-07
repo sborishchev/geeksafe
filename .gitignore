@@ -1,0 +1,8 @@
+.env
+Secrets.xcconfig
+.DS_Store
+Thumbs.db
+build/
+DerivedData/
+*.swp
+.swiftpm/
