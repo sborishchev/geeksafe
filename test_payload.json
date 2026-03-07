@@ -1,8 +1,8 @@
 {
-  "substance": "alcohol",
-  "medication": "Xanax",
-  "heart_rate": 85,
-  "breathing_rate": 10,
-  "hrv_sdnn": 40.2,
-  "stress_index": 75
+  "substance": ["alcohol", "weed"],
+  "medication": null,
+  "heart_rate": 120,
+  "breathing_rate": 12,
+  "hrv_sdnn": 25.0,
+  "stress_index": 82
 }
