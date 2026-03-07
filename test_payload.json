@@ -1,0 +1,8 @@
+{
+  "substance": "alcohol",
+  "medication": null,
+  "heart_rate": 55,
+  "breathing_rate": 8,
+  "hrv_sdnn": 25.4,
+  "stress_index": 82
+}
