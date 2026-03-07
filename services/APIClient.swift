@@ -1,16 +1,9 @@
 import Foundation
 
-enum NetworkError: Error {
-    case badURL, requestFailed, decodingError
-}
-
 struct APIClient {
-    // TODO: When teammates give their URL (Ngrok or Heroku), 
-    // you only have to change it once right here.
-    static let baseURL = "http://localhost:8000" 
-
-    static func sendDynamicData(endpoint: String, payload: [String: Any]) async throws -> AnalysisResponse {
-        guard let url = URL(string: baseURL + endpoint) else {
+    // We remove the static baseURL so we can point to different servers per tab
+    static func sendDynamicData(fullURL: String, payload: [String: Any]) async throws -> AnalysisResponse {
+        guard let url = URL(string: fullURL) else {
             throw URLError(.badURL)
         }
 
@@ -24,6 +17,7 @@ struct APIClient {
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            // This will trigger if the teammate's server is down or the IP changed
             throw URLError(.badServerResponse)
         }
 
