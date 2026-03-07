@@ -2,7 +2,7 @@
   "rules": [
     {
       "drug_class": "benzodiazepine",
-      "substance": "alcohol",
+      "substance": ["alcohol","cannabis"],
       "risk": "dangerous",
       "reason": "Severe sedation and respiratory depression"
     },
