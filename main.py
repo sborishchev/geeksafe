@@ -4,16 +4,22 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from google import genai
 
+# initialize FastAPI
 app = FastAPI()
 
+# Gemini client
 client = genai.Client(api_key=os.getenv("API_KEY"))
+
 filename = "rules.json"
 
 
 # expected api input:
 # {
-#   "query": "<active_ingredient_name_or_brand_name>"
+#   "medication": "<active_ingredient_name_or_brand_name>",
+#   "substance": "<alcohol_or_cannabis>"
 # }
+
+
 # expect api output:
 # {
 #   "found": true,
@@ -30,11 +36,13 @@ filename = "rules.json"
 # }
 # api  endpoint: POST /check-alcohol-risk
 
-
+# ---------- REQUEST MODEL ----------
 class MedicationRequest(BaseModel):
-    query: str
+    medication: str
+    substance: str
 
 
+# ---------- LOAD JSON ----------
 def extract_json(filename):
     try:
         with open(filename, "r") as file:
@@ -45,87 +53,74 @@ def extract_json(filename):
         return None
 
 
-def normalize_text(text):
-    return text.strip().lower()
-
-
-# finds the medicine associated with either a generic medication name
-# or a brand name in the provided dictionary
-# returns:
-# {
-#   "match_type": "generic" or "brand", 
-#   "medication": { ...original medication dict... }
-# }
-def find_medicine(data, query):
-    normalized_query = normalize_text(query)
+# ---------- FIND MEDICATION ----------
+def find_medicine(data, medicine_name):
+    medicine_name = medicine_name.strip().lower()
 
     for medication in data["medications"]:
-        generic_name = normalize_text(medication["name"])
-        brand_name = normalize_text(medication.get("brand", ""))
+        if medication["name"].strip().lower() == medicine_name:
+            return medication
 
-        if generic_name == normalized_query:
-            return {
-                "match_type": "generic",
-                "medication": medication
-            }
-
-        if brand_name and brand_name == normalized_query:
-            return {
-                "match_type": "brand",
-                "medication": medication
-            }
+        if medication.get("brand", "").strip().lower() == medicine_name:
+            return medication
 
     return None
 
 
-def find_drug_class(data, drug_class):
+# ---------- FIND RULE ----------
+def find_drug_class(data, drug_class, substance):
+    substance = substance.strip().lower()
+
     for drug in data["rules"]:
-        if drug["drug_class"] == drug_class:
+        if (
+            drug["drug_class"] == drug_class
+            and substance in drug["substance"]
+        ):
             return drug
+
     return None
 
 
-def risk_alcohol(query, data):
-    lookup_result = find_medicine(data, query)
+# ---------- RISK ENGINE ----------
+def risk_check(medication, substance, data):
+    substance = substance.strip().lower()
 
-    if not lookup_result:
+    val = find_medicine(data, medication)
+
+    if not val:
         return {
             "found": False,
-            "query": query,
+            "medication": medication,
+            "substance": substance,
             "message": "Medication not found"
         }
 
-    matched_medication = lookup_result["medication"]
-    match_type = lookup_result["match_type"]
-
-    rule = find_drug_class(data, matched_medication["drug_class"])
+    rule = find_drug_class(data, val["drug_class"], substance)
 
     if not rule:
         return {
             "found": True,
-            "query": query,
-            "matched_by": match_type,
-            "medication": matched_medication["name"],
-            "brand": matched_medication.get("brand"),
-            "drug_class": matched_medication["drug_class"],
+            "medication": val["name"],
+            "brand": val.get("brand"),
+            "drug_class": val["drug_class"],
+            "substance": substance,
             "conflict": False,
-            "message": "No alcohol conflict found"
+            "message": f"No {substance} conflict found"
         }
 
     return {
         "found": True,
-        "query": query,
-        "matched_by": match_type,
-        "medication": matched_medication["name"],
-        "brand": matched_medication.get("brand"),
-        "drug_class": matched_medication["drug_class"],
-        "substance": matched_medication.get("substance", rule.get("substance")),
+        "medication": val["name"],
+        "brand": val.get("brand"),
+        "drug_class": val["drug_class"],
+        "substance": substance,
         "conflict": True,
         "risk": rule["risk"],
         "reason": rule["reason"]
     }
 
 
+# ---------- AI EXPLANATION ----------
 def get_ai_analysis(result):
     if not result.get("conflict"):
         return None
@@ -134,7 +129,7 @@ def get_ai_analysis(result):
         model="gemini-2.0-flash",
         contents=(
             f"Briefly explain the risk of mixing {result['medication']} "
-            f"(brand {result.get('brand', 'unknown')}) with alcohol. "
+            f"(brand {result.get('brand', 'unknown')}) with {result['substance']}. "
             f"Max 200 characters."
         )
     )
@@ -142,19 +137,21 @@ def get_ai_analysis(result):
     return response.text
 
 
+# ---------- HEALTH CHECK ----------
 @app.get("/")
 def home():
     return {"status": "GeekSafe backend running"}
 
 
-@app.post("/check-alcohol-risk")
-def check_alcohol_risk(request: MedicationRequest):
+# ---------- MAIN ENDPOINT ----------
+@app.post("/check-risk")
+def check_risk(request: MedicationRequest):
     data = extract_json(filename)
 
     if data is None:
         return {"error": "Could not load rules.json"}
 
-    result = risk_alcohol(request.query, data)
+    result = risk_check(request.medication, request.substance, data)
 
     if result.get("conflict"):
         result["ai_analysis"] = "test"
