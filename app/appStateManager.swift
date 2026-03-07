@@ -10,8 +10,16 @@ struct SafetyRequest: Codable {
     let stress_index: Int
 }
 
+struct MedCheckRequest: Codable {
+    //TODO: Update when sergei does
+    let medication: str
+}
+
 class AppStateManager: ObservableObject {
-@Published var errorMessage: String? = nil
+    @Published var errorMessage: String? = nil
+
+    @Published var latestMedAnalysis: MedResearchResponse? = nil
+    @Published var latestVitalAnalysis: VitalScoreResponse? = nil
 
     @Published var selectedSubstance: String = "Alcohol"
     @Published var scannedMedication: String? = nil
@@ -36,16 +44,15 @@ class AppStateManager: ObservableObject {
     @MainActor
     func runMedicationCheck(name: String) async {
         self.isRequesting = true
-        let payload: [String: Any] = [
-            "substance": selectedSubstance,
-            "medication_name": name,
-            "timestamp": Date().description
-        ]
-        
+        let payload = ["medication": name]
         do {
-            self.latestAnalysis = try await APIClient.sendDynamicData(endpoint: "/research", payload: payload)
-        } catch {
-            print("❌ Research API Error: \(error)")
+            // Note we specify the type: MedResearchResponse
+            self.latestMedAnalysis = try await APIClient.sendDynamicData(
+                fullURL: tab1URL, 
+                payload: payload
+            )
+        }catch {
+            print("Research API Error: \(error)")
             self.errorMessage = "Failed to analyze medication. Please try again." // You can use this in your UI to show an alert
         }
         self.isRequesting = false
@@ -64,8 +71,12 @@ class AppStateManager: ObservableObject {
         ]
         
         do {
-self.latestAnalysis = try await APIClient.sendDynamicData(fullURL: tab2URL, payload: payload)        } catch {
-            print("❌ Monitor API Error: \(error)")
+            self.latestVitalAnalysis = try await APIClient.sendDynamicData(
+                fullURL: tab2URL, 
+                payload: payload
+            )
+        }catch {
+            print("Monitor API Error: \(error)")
             self.errorMessage = "Failed to analyze vitals. Please try again." // You can use this in your UI to show an alert
         }
         self.isRequesting = false
