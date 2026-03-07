@@ -1,0 +1,216 @@
+{
+  "rules": [
+    {
+      "drug_class": "benzodiazepine",
+      "substance": "alcohol",
+      "risk": "dangerous",
+      "reason": "Severe sedation and respiratory depression"
+    },
+    {
+      "drug_class": "opioid",
+      "substance": "alcohol",
+      "risk": "dangerous",
+      "reason": "Respiratory depression and overdose risk"
+    },
+    {
+      "drug_class": "sedative_hypnotic",
+      "substance": "alcohol",
+      "risk": "dangerous",
+      "reason": "Extreme sedation and breathing suppression"
+    },
+    {
+      "drug_class": "antihistamine_sedating",
+      "substance": "alcohol",
+      "risk": "caution",
+      "reason": "Increased drowsiness and impaired coordination"
+    },
+    {
+      "drug_class": "ssri",
+      "substance": "alcohol",
+      "risk": "caution",
+      "reason": "Increased dizziness and worsened depression"
+    },
+    {
+      "drug_class": "snri",
+      "substance": "alcohol",
+      "risk": "caution",
+      "reason": "Enhanced side effects and impaired judgment"
+    },
+    {
+      "drug_class": "antipsychotic",
+      "substance": "alcohol",
+      "risk": "dangerous",
+      "reason": "Severe CNS depression and coordination loss"
+    },
+    {
+      "drug_class": "muscle_relaxant",
+      "substance": "alcohol",
+      "risk": "dangerous",
+      "reason": "Extreme sedation and impaired breathing"
+    },
+    {
+      "drug_class": "sleep_medication",
+      "substance": "alcohol",
+      "risk": "dangerous",
+      "reason": "Risk of unconsciousness and respiratory depression"
+    }
+  ],
+
+  "medications": [
+    {
+      "name": "alprazolam",
+      "brand": "Xanax",
+      "drug_class": "benzodiazepine"
+    },
+    {
+      "name": "diazepam",
+      "brand": "Valium",
+      "drug_class": "benzodiazepine"
+    },
+    {
+      "name": "lorazepam",
+      "brand": "Ativan",
+      "drug_class": "benzodiazepine"
+    },
+    {
+      "name": "clonazepam",
+      "brand": "Klonopin",
+      "drug_class": "benzodiazepine"
+    },
+    {
+      "name": "oxycodone",
+      "brand": "OxyContin",
+      "drug_class": "opioid"
+    },
+    {
+      "name": "hydrocodone",
+      "brand": "Vicodin",
+      "drug_class": "opioid"
+    },
+    {
+      "name": "morphine",
+      "brand": "MS Contin",
+      "drug_class": "opioid"
+    },
+    {
+      "name": "codeine",
+      "brand": "Tylenol #3",
+      "drug_class": "opioid"
+    },
+    {
+      "name": "tramadol",
+      "brand": "Ultram",
+      "drug_class": "opioid"
+    },
+    {
+      "name": "zolpidem",
+      "brand": "Ambien",
+      "drug_class": "sleep_medication"
+    },
+    {
+      "name": "eszopiclone",
+      "brand": "Lunesta",
+      "drug_class": "sleep_medication"
+    },
+    {
+      "name": "zaleplon",
+      "brand": "Sonata",
+      "drug_class": "sleep_medication"
+    },
+    {
+      "name": "diphenhydramine",
+      "brand": "Benadryl",
+      "drug_class": "antihistamine_sedating"
+    },
+    {
+      "name": "chlorpheniramine",
+      "brand": "Chlor-Trimeton",
+      "drug_class": "antihistamine_sedating"
+    },
+    {
+      "name": "hydroxyzine",
+      "brand": "Vistaril",
+      "drug_class": "antihistamine_sedating"
+    },
+    {
+      "name": "sertraline",
+      "brand": "Zoloft",
+      "drug_class": "ssri"
+    },
+    {
+      "name": "fluoxetine",
+      "brand": "Prozac",
+      "drug_class": "ssri"
+    },
+    {
+      "name": "paroxetine",
+      "brand": "Paxil",
+      "drug_class": "ssri"
+    },
+    {
+      "name": "citalopram",
+      "brand": "Celexa",
+      "drug_class": "ssri"
+    },
+    {
+      "name": "escitalopram",
+      "brand": "Lexapro",
+      "drug_class": "ssri"
+    },
+    {
+      "name": "venlafaxine",
+      "brand": "Effexor",
+      "drug_class": "snri"
+    },
+    {
+      "name": "duloxetine",
+      "brand": "Cymbalta",
+      "drug_class": "snri"
+    },
+    {
+      "name": "desvenlafaxine",
+      "brand": "Pristiq",
+      "drug_class": "snri"
+    },
+    {
+      "name": "quetiapine",
+      "brand": "Seroquel",
+      "drug_class": "antipsychotic"
+    },
+    {
+      "name": "risperidone",
+      "brand": "Risperdal",
+      "drug_class": "antipsychotic"
+    },
+    {
+      "name": "olanzapine",
+      "brand": "Zyprexa",
+      "drug_class": "antipsychotic"
+    },
+    {
+      "name": "haloperidol",
+      "brand": "Haldol",
+      "drug_class": "antipsychotic"
+    },
+    {
+      "name": "cyclobenzaprine",
+      "brand": "Flexeril",
+      "drug_class": "muscle_relaxant"
+    },
+    {
+      "name": "carisoprodol",
+      "brand": "Soma",
+      "drug_class": "muscle_relaxant"
+    },
+    {
+      "name": "methocarbamol",
+      "brand": "Robaxin",
+      "drug_class": "muscle_relaxant"
+    },
+    {
+      "name": "baclofen",
+      "brand": "Lioresal",
+      "drug_class": "muscle_relaxant"
+    }
+  ]
+}
