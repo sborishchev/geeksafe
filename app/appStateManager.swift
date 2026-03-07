@@ -29,6 +29,10 @@ class AppStateManager: ObservableObject {
         return (latestAnalysis?.riskLevel ?? 0) > 7
     }
 
+    // TODO: Update these as teammates change their local IPs
+    let tab1URL = "http://10.200.X.XXX:8000/check-meds" // Placeholder for now
+    let tab2URL = "http://10.200.8.188:8000/score-vitals"
+
     @MainActor
     func runMedicationCheck(name: String) async {
         self.isRequesting = true
@@ -60,8 +64,7 @@ class AppStateManager: ObservableObject {
         ]
         
         do {
-            self.latestAnalysis = try await APIClient.sendDynamicData(endpoint: "/monitor", payload: payload)
-        } catch {
+self.latestAnalysis = try await APIClient.sendDynamicData(fullURL: tab2URL, payload: payload)        } catch {
             print("❌ Monitor API Error: \(error)")
             self.errorMessage = "Failed to analyze vitals. Please try again." // You can use this in your UI to show an alert
         }

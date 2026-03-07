@@ -24,6 +24,9 @@ class MedicationRequest(BaseModel):
 
 
 # ---------- LOAD JSON ----------
+# extract_json(filename) extracts dictionary from a json
+# returns dictionary
+# requires: filename be a valid file in the directory
 def extract_json(filename):
     try:
         with open(filename, "r") as file:
@@ -35,6 +38,17 @@ def extract_json(filename):
 
 
 # ---------- FIND MEDICATION ----------
+# finds the medicien associated with a given main ingredient name in the provided dictionary
+# requires: medicine_name be a string, data be a dictionary of the format {"medications":{}}
+# returns: a dictionary containing information about the associated medicine, of the format
+'''
+   {
+      "name": "name",
+      "brand": "brand",
+      "drug_class": "drug_class"
+    }
+
+'''
 def find_medicine(data, medicine_name):
     medicine_name = medicine_name.lower()
 
@@ -49,6 +63,18 @@ def find_medicine(data, medicine_name):
 
 
 # ---------- FIND RULE ----------
+# finds the rule associated with a given drug class in the provided dictionary
+# requires: data be a valid dictionary, drug_class be a string or None
+# returns: a dictionary of the format:
+'''
+ {
+      "drug_class": "drug_class",
+      "substance": "substance",
+      "risk": "risk",
+      "reason": "reason"
+}
+
+'''
 def find_drug_class(data, drug_class):
     for drug in data["rules"]:
         if drug["drug_class"] == drug_class and drug["substance"] == "alcohol":
@@ -57,6 +83,7 @@ def find_drug_class(data, drug_class):
 
 
 # ---------- RISK ENGINE ----------
+# returns the risk information associated with a given ingredient name
 def risk_alcohol(medication, data):
 
     val = find_medicine(data, medication)
@@ -92,6 +119,7 @@ def risk_alcohol(medication, data):
 
 
 # ---------- AI EXPLANATION ----------
+# returns an ai explanation of a risk situation, formatted as a string
 def get_ai_analysis(result):
 
     if not result.get("conflict"):
@@ -106,6 +134,8 @@ def get_ai_analysis(result):
 
 
 # ---------- HEALTH CHECK ----------
+
+# confirms runnign status of backend script
 @app.get("/")
 def home():
     return {"status": "GeekSafe backend running"}
