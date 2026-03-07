@@ -10,9 +10,9 @@ struct GeekSafeApp: App {
         // Safe retrieval of the Presage API Key from your .xcconfig via Info.plist
         if let key = Bundle.main.infoDictionary?["PRESAGE_API_KEY"] as? String {
             // TODO: uncomment this when move to XCode: SmartSpectraSwiftSDK.shared.setApiKey(key)
-            print("🛡️ GeekSafe: Presage SDK Initialized with Key.")
+            print("GeekSafe: Presage SDK Initialized with Key.")
         } else {
-            print("⚠️ GeekSafe: Running without API Key (Check Secrets.xcconfig).")
+            print("GeekSafe: Running without API Key (Check Secrets.xcconfig).")
         }
     }
 

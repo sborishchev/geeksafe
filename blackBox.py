@@ -40,18 +40,21 @@ class VitalsRequest(BaseModel):
 def evaluate_physiological_risk(substance, br, hr, stress):
     status = "STABLE"
     color = "#34C759" # Green
+    score = 2
 
     # Logic: Alcohol + Respiratory Depression (BR < 12)
     if substance.lower() == "alcohol" and br < 12:
         status = "DANGER"
         color = "#FF3B30" # Red
+        score = 9
     
     # Logic: High Heart Rate or Peak Stress
     elif hr > 130 or stress > 80:
         status = "CAUTION"
         color = "#FFCC00" # Yellow
+        score = 6
         
-    return status, color
+    return status, color, score
 
 # ---------- AI ANALYSIS ----------
 # Brief clinical summary of the vitals scan
@@ -76,7 +79,7 @@ def get_vitals_explanation(med, sub, hr, br, stress):
 async def score_vitals(request: VitalsRequest):
     
     # 1. Run the Risk Engine on extracted vitals
-    danger_level, ui_color = evaluate_physiological_risk(
+    danger_level, ui_color, score = evaluate_physiological_risk(
         request.substance, 
         request.breathing_rate, 
         request.heart_rate, 
@@ -96,6 +99,7 @@ async def score_vitals(request: VitalsRequest):
     return {
         "danger_level": danger_level,
         "color": ui_color,
+        "risk_score": score,
         "status": ai_status,
         "vitals_confirmed": {
             "hr": request.heart_rate,
