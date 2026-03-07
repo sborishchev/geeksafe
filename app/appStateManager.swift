@@ -56,7 +56,8 @@ class AppStateManager: ObservableObject {
     @MainActor
     func runMedicationCheck(name: String) async {
         self.isRequesting = true
-        let payload = ["medication": name]
+        let payload = ["query": name] 
+        
         do {
             self.latestMedAnalysis = try await APIClient.sendDynamicData(
                 fullURL: tab1URL, 
