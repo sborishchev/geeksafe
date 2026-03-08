@@ -3,37 +3,34 @@ import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, SafeAreaView, ScrollView } from "react-native";
 import { checkMedicationRisk } from "@/api/apiService";
 import Header from "@/components/successScanHeader";
+import RiskOverlay from "@/components/riskOverlay"; // 👈 1. Import the Overlay
 
 export default function Index() {
   const { setActiveTab } = useAppState();
 
+  // 👈 2. FIX: Change 'safety' to 'medication'
   useEffect(() => {
-    setActiveTab('safety'); // 👈 This MUST happen so the Overlay knows where it is
+    setActiveTab('medication');
   }, []);
-
 
   const [medication, setMedication] = useState("");
   const { substance, setSubstance } = useAppState();
+
+  // 👈 3. Update state to store the full object for the Overlay
+  const [apiResult, setApiResult] = useState<any>(null);
   const [result, setResult] = useState("No result yet");
-
-  // Status for the pulsing Header component
-  const [scanStatus, setScanStatus] = useState<'scanning' | 'success' | 'idle'>('scanning');
-
-  // Simulation: Swapping from '...' to 'Success' after 4 seconds TODO, UPDATE THIS TO REFLECT REAL SCAN STATUS
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (scanStatus === 'scanning') setScanStatus('success');
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, []);
+  const [scanStatus, setScanStatus] = useState<'scanning' | 'success' | 'idle'>('idle');
 
   async function handleCheck() {
     setScanStatus('scanning');
+    setApiResult(null); // Clear previous results
+
     try {
       const data = await checkMedicationRisk(medication, substance);
       console.log("Full Backend Response:", data);
 
       setScanStatus('success');
+      setApiResult(data); // 👈 4. Store the object for the Overlay to use
 
       if (data.conflict === true || data.risk_level === 'high') {
         setResult(`⚠️ DANGER: ${data.reason}`);
@@ -84,6 +81,15 @@ export default function Index() {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {/* 👈 5. Add Overlay here - it will cover the screen when apiResult is set */}
+      <RiskOverlay
+        result={apiResult}
+        onClose={() => {
+          setApiResult(null);
+          setScanStatus('idle');
+        }}
+      />
     </View>
   );
 }
