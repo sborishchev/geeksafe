@@ -161,6 +161,19 @@ def generate_vitals_analysis(risk: str, score: int, subs: List[str], hr: int, br
         )
     )
     return response.text.strip()
+    try:
+        prompt = (
+            f"Generate a unique safety report in 150-200 words. Status: {risk}. "
+            f"Vitals: HR {hr}, BR {br}, Stress {stress}."
+        )
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
+        return response.text.strip()
+    except Exception as e:
+        print(f"⚠️ AI LIMIT HIT: {e}")
+        return "Vitals analysis is temporarily unavailable due to high traffic. Please proceed with caution based on your clinical risk score."
 
 
 
@@ -168,11 +181,17 @@ def generate_vitals_analysis(risk: str, score: int, subs: List[str], hr: int, br
 
 
 def get_med_ai_analysis(med, brand, substance):
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=f"Briefly explain risk of mixing {med} (brand {brand}) with {substance}. Max 200 chars."
-    )
-    return response.text.strip()
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=f"Briefly explain risk of mixing {med} (brand {brand}) with {substance}. Max 200 chars."
+        )
+        return response.text.strip()
+    except Exception as e:
+        print(f"⚠️ AI LIMIT HIT: {e}")
+        return "Detailed AI analysis is currently offline. Refer to the specific risk warnings provided above."
+
+
 
 
 # ---------- Endpoints ----------
