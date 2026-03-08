@@ -97,12 +97,14 @@ export default function Index() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
+    <View style={{ flex: 1, backgroundColor: "#fafafa" }}>
       <Header status={scanStatus} />
 
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={{ paddingVertical: 20 }}>
-          <Text style={styles.title}>GeekSafe</Text>
+          <View style={styles.titleContainer}>
+            <Text style={styles.title}>GeekSafe</Text>
+          </View>
 
           <View style={styles.inputContainer}>
             <TextInput
@@ -112,7 +114,7 @@ export default function Index() {
               onChangeText={setMedication}
             />
             <Pressable style={styles.scanIconButton} onPress={startScanning}>
-              <Ionicons name="scan" size={24} color="#2563eb" />
+              <Ionicons name="scan" size={24} color="white" />
             </Pressable>
           </View>
 
@@ -189,74 +191,95 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 30,
+    paddingHorizontal: 20,
+  },
+  titleContainer: {
+    alignItems: "center",
+    marginBottom: 40,
+    marginTop: 24,
   },
   title: {
-    fontSize: 34,
+    fontSize: 42,
     fontWeight: "700",
-    textAlign: "center",
-    marginBottom: 30,
-    marginTop: 10
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    padding: 14,
-    borderRadius: 8,
-    backgroundColor: "white",
-  },
-  toggleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20
-  },
-  toggle: {
-    flex: 1,
-    padding: 14,
-    backgroundColor: "#ddd",
-    borderRadius: 8,
-    alignItems: "center",
-    marginHorizontal: 5
-  },
-  active: {
-    backgroundColor: "#2563eb"
-  },
-  toggleText: {
-    color: "white",
-    fontWeight: "600"
-  },
-  button: {
-    backgroundColor: "#111",
-    padding: 16,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 20
-  },
-  buttonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600"
-  },
-  resultBox: {
-    backgroundColor: "white",
-    padding: 16,
-    borderRadius: 8,
-    minHeight: 120,
-    marginBottom: 100
+    color: "#9036DE",
+    letterSpacing: 1,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
+    gap: 8,
+  },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#e5e5e5",
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "white",
+    fontSize: 14,
+    color: "#1a1a1a",
   },
   scanIconButton: {
-    padding: 14,
-    marginLeft: 8,
-    backgroundColor: "#e0e7ff",
-    borderRadius: 8,
+    color: "#9036DE",
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#9036DE",
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: "#e8e0ff",
+  },
+  toggleRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 24,
+  },
+  toggle: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#e5e5e5",
+  },
+  active: {
+    backgroundColor: "#9036DE",
+    borderColor: "#9036DE",
+  },
+  toggleText: {
+    color: "white",
+    fontWeight: "500",
+    fontSize: 13,
+  },
+  button: {
+    backgroundColor: "#9036DE",
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    marginBottom: 24,
+    shadowColor: "#9036DE",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  buttonText: {
+    color: "white",
+    fontSize: 15,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+  },
+  resultBox: {
+    backgroundColor: "white",
+    padding: 16,
+    borderRadius: 10,
+    minHeight: 80,
+    marginBottom: 100,
+    borderWidth: 1,
+    borderColor: "#e5e5e5",
   },
   cameraContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -285,8 +308,8 @@ const styles = StyleSheet.create({
   },
   cameraInstruction: {
     color: "white",
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "500",
     marginBottom: 20,
     backgroundColor: "rgba(0,0,0,0.6)",
     paddingHorizontal: 20,

@@ -2,60 +2,80 @@
   "rules": [
     {
       "drug_class": "benzodiazepine",
-      "substance": ["alcohol", "cannabis"],
+      "substance": [
+        "alcohol",
+        "cannabis"
+      ],
       "risk": "dangerous",
       "reason": "Additive sedation and impairment"
     },
     {
       "drug_class": "opioid",
-      "substance": ["alcohol", "cannabis"],
+      "substance": [
+        "alcohol",
+        "cannabis"
+      ],
       "risk": "dangerous",
       "reason": "Additive sedation and overdose risk"
     },
     {
       "drug_class": "sedative_hypnotic",
-      "substance": ["alcohol"],
+      "substance": [
+        "alcohol"
+      ],
       "risk": "dangerous",
       "reason": "Strong additive sedation and breathing suppression risk"
     },
     {
       "drug_class": "antihistamine_sedating",
-      "substance": ["alcohol"],
+      "substance": [
+        "alcohol"
+      ],
       "risk": "caution",
       "reason": "Increased drowsiness and impaired coordination"
     },
     {
       "drug_class": "ssri",
-      "substance": ["alcohol"],
+      "substance": [
+        "alcohol"
+      ],
       "risk": "caution",
       "reason": "May increase side effects such as dizziness or drowsiness"
     },
     {
       "drug_class": "snri",
-      "substance": ["alcohol"],
+      "substance": [
+        "alcohol"
+      ],
       "risk": "caution",
       "reason": "May increase side effects such as dizziness or drowsiness"
     },
     {
       "drug_class": "antipsychotic",
-      "substance": ["alcohol"],
+      "substance": [
+        "alcohol"
+      ],
       "risk": "dangerous",
       "reason": "Alcohol can increase sedation and impairment"
     },
     {
       "drug_class": "muscle_relaxant",
-      "substance": ["alcohol"],
+      "substance": [
+        "alcohol"
+      ],
       "risk": "dangerous",
       "reason": "Alcohol can worsen drowsiness and impairment"
     },
     {
       "drug_class": "sleep_medication",
-      "substance": ["alcohol", "cannabis"],
+      "substance": [
+        "alcohol",
+        "cannabis"
+      ],
       "risk": "dangerous",
       "reason": "Strong additive sedative effects"
     }
   ],
-
   "medications": [
     {
       "name": "alprazolam",

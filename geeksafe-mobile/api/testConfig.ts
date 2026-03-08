@@ -3,7 +3,7 @@
 
 export const TEST_CONFIG = {
     // Set to true to enable test mode (uses mock payloads, no network calls)
-    ENABLED: false,
+    ENABLED: true,
 
     // Set to true to see verbose logging
     VERBOSE_LOGGING: true,

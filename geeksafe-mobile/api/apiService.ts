@@ -40,6 +40,30 @@ const mockMedicationResponses: { [key: string]: any } = {
         ai_analysis: "Combining Xanax with alcohol dramatically increases CNS depression. Both substances are central nervous system depressants that synergistically amplify their effects, creating dangerous respiratory and cardiac risks.",
         message: "Danger - critical conflict detected"
     },
+    "xanax_cannabis": {
+        found: true,
+        medication: "Xanax",
+        brand: "Alprazolam",
+        drug_class: "Benzodiazepine",
+        substance: "cannabis",
+        conflict: true,
+        risk: "high",
+        reason: "Benzodiazepines with cannabis increase CNS depression and sedation risk.",
+        ai_analysis: "Combining Xanax with cannabis significantly increases sedation and CNS depression. Both are central nervous system depressants that can impair judgment and create dangerous interactions.",
+        message: "Danger - conflict detected"
+    },
+    "xanax_both": {
+        found: true,
+        medication: "Xanax",
+        brand: "Alprazolam",
+        drug_class: "Benzodiazepine",
+        substance: "both",
+        conflict: true,
+        risk: "critical",
+        reason: "Benzodiazepines with both alcohol and cannabis create severe CNS depression and overdose risk.",
+        ai_analysis: "Combining Xanax with both alcohol and cannabis creates critically dangerous CNS depression. This combination severely increases overdose risk and respiratory failure potential. Seek immediate medical attention.",
+        message: "Danger - critical conflict detected"
+    },
     "acetaminophen_alcohol": {
         found: true,
         medication: "Acetaminophen",
@@ -62,6 +86,30 @@ const mockMedicationResponses: { [key: string]: any } = {
         reason: "No significant interaction documented between aspirin and cannabis.",
         ai_analysis: "Aspirin and cannabis have minimal direct pharmacological interactions. However, cannabis can increase heart rate and may amplify aspirin's effects.",
         message: "No significant conflict"
+    },
+    "aspirin_alcohol": {
+        found: true,
+        medication: "Aspirin",
+        brand: "Bayer",
+        drug_class: "NSAID",
+        substance: "alcohol",
+        conflict: true,
+        risk: "moderate",
+        reason: "Aspirin with alcohol increases risk of gastrointestinal bleeding and ulcers.",
+        ai_analysis: "Combining aspirin with alcohol increases the risk of GI bleeding and gastric ulceration. Both substances can thin blood and irritate the stomach lining.",
+        message: "Warning - conflict detected"
+    },
+    "aspirin_both": {
+        found: true,
+        medication: "Aspirin",
+        brand: "Bayer",
+        drug_class: "NSAID",
+        substance: "both",
+        conflict: true,
+        risk: "high",
+        reason: "Aspirin with alcohol and cannabis significantly increases bleeding and ulcer risk.",
+        ai_analysis: "Using aspirin with both alcohol and cannabis substantially increases gastrointestinal bleeding risk and cardiovascular complications.",
+        message: "Warning - elevated risk"
     },
     "default_high": {
         found: true,
