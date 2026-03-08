@@ -26,13 +26,16 @@ export default function RiskOverlay({ result, onClose }: RiskOverlayProps) {
         message = result.ai_analysis;
         extraInfo = result.reason || `Class: ${result.drug_class}`;
     } else {
-        // Safety Tab Logic: Score > 7 is Red, else Green (or follow backend color)
-        bgColor = result.risk_score > 7 ? "#FF3B30" : "#34C759";
+        // Safety Tab Logic: score > 7 is Red, else Green
+        const riskScore = result.risk_score ?? result.score ?? 0;
+        const statusMsg = result.status ?? result.safety_analysis ?? "Analysis complete.";
 
-        title = result.risk_score > 7 ? "WARNING MESSAGE" : "STATUS: STABLE";
-        subtitle = `Safety Score: ${result.risk_score}/10`;
-        message = result.status;
-        extraInfo = `Vitals: HR ${result.vitals_confirmed?.hr} | BR ${result.vitals_confirmed?.br}`;
+        bgColor = riskScore > 7 ? "#FF3B30" : "#34C759";
+
+        title = riskScore > 7 ? "WARNING MESSAGE" : "STATUS: STABLE";
+        subtitle = `Safety Score: ${riskScore}/10`;
+        message = statusMsg;
+        extraInfo = `Vitals: HR ${result.vitals_confirmed?.hr} | BR ${result.vitals_confirmed?.br} | Stress ${result.vitals_confirmed?.stress ?? '—'}`;
     }
 
     return (
