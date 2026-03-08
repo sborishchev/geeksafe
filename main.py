@@ -193,7 +193,9 @@ async def extract_medication_endpoint(request: ImageRequest):
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=[prompt, types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")]
+            
         )
+        print(response.contents)
         return {"medication": response.text.strip()}
     except Exception as e:
         print(f"⚠️ OCR ERROR: {e}")
