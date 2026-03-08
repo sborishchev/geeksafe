@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import base64
 from typing import Optional, List
 
 from fastapi import FastAPI
@@ -184,11 +185,14 @@ async def check_vitals_risk_endpoint(request: VitalsRequest):
 @app.post("/extract-medication")
 async def extract_medication_endpoint(request: ImageRequest):
     try:
-        # Send the base64 image to Gemini for text extraction
+        # Decode the base64 string into raw bytes
+        image_bytes = base64.b64decode(request.image_base64)
+        
+        # Send the raw image bytes to Gemini for text extraction
         prompt = "Look at this medication label. Extract ONLY the medication or active ingredient name. Do not include dosages, instructions, brand names if active ingredient is present, or any other text. Just the core medication name. If you cannot find one, reply with 'Unknown'."
         response = client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=[prompt, types.Part.from_bytes(data=request.image_base64.encode("utf-8"), mime_type="image/jpeg")]
+            contents=[prompt, types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")]
         )
         return {"medication": response.text.strip()}
     except Exception as e:
