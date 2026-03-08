@@ -1,5 +1,3 @@
-
-
 import os
 import time
 from typing import Optional, List
@@ -14,8 +12,16 @@ from dotenv import load_dotenv
 # ---------- Initialization ----------
 load_dotenv()
 
+# DEBUG: Check if the API Key is loading correctly
+api_key = os.getenv("API_KEY")
+if not api_key:
+    print("❌ ERROR: No API_KEY found in .env file!")
+else:
+    print(f"✅ API_KEY loaded successfully: {api_key[:5]}***")
+
 app = FastAPI()
 
+# Enable CORS for mobile app connectivity
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,8 +30,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = genai.Client(api_key=os.getenv("API_KEY"))
-
+# Initialize Gemini Client
+client = genai.Client(api_key=api_key)
 
 # ---------- Request Model ----------
 class VitalsRequest(BaseModel):
@@ -36,7 +42,6 @@ class VitalsRequest(BaseModel):
     hrv_sdnn: float
     stress_index: int
 
-
 # ---------- Core Risk Engine ----------
 def evaluate_physiological_risk(
     substances: List[str],
@@ -45,10 +50,10 @@ def evaluate_physiological_risk(
     hrv_sdnn: float,
     stress_index: int,
 ):
-    normalized_substances = [s.strip().lower() for s in substances]
+    subs = [s.strip().lower() for s in substances]
 
-    # 1. DANGER logic
-    if len(normalized_substances) > 1 and (
+    # 1. DANGER logic (Level 10: Multi-substance conflict)
+    if len(subs) > 1 and (
         breathing_rate < 13
         or heart_rate > 120
         or hrv_sdnn < 30
@@ -56,24 +61,25 @@ def evaluate_physiological_risk(
     ):
         return "DANGER", "#FF3B30", 10
 
-    if "alcohol" in normalized_substances and breathing_rate < 12:
+    # 2. Substance-Specific Danger
+    if "alcohol" in subs and breathing_rate < 12:
         return "DANGER", "#FF3B30", 9
 
-    if "weed" in normalized_substances and heart_rate > 140:
+    if "weed" in subs and heart_rate > 140:
         return "DANGER", "#FF3B30", 8
 
+    # 3. Global System Fail-safe
     if heart_rate > 155 or breathing_rate < 10 or stress_index > 95:
         return "DANGER", "#FF3B30", 10
 
-    # 2. CAUTION logic
-    if len(normalized_substances) > 1:
+    # 4. CAUTION logic
+    if len(subs) > 1:
         return "CAUTION", "#FFCC00", 7
 
-    # 3. STABLE logic
+    # 5. STABLE logic
     return "STABLE", "#34C759", 2
 
-
-# ---------- AI Explanation ----------
+# ---------- AI Detailed Analysis ----------
 def generate_vitals_analysis(
     danger_level: str,
     score: int,
@@ -84,76 +90,41 @@ def generate_vitals_analysis(
 ):
     substance_string = " and ".join(substances)
 
+    # REFINED PROMPT: 50-70 words, specific sensors, stop order, and suggestion
     prompt = (
-        f"Generate a unique safety report in 150-200 words. Token: {time.time()}. "
-        f"User status: {danger_level} (score {score}/10). "
+        f"Timestamp: {time.time()}. You are a clinical health monitor. "
+        f"User state: {danger_level} (Score {score}/10). "
         f"Substances: {substance_string}. "
         f"Vitals: HR {heart_rate} bpm, BR {breathing_rate} rpm, Stress {stress_index}. "
-        f"Explain the physiological concerns clearly. "
-        f"Explain why these vitals matter in this context. "
-        f"Provide 3 specific safety steps. "
-        f"Tone: clinical but human. Avoid repetitive opening phrases."
+        f"TASK: Write a smooth 50-70 word narrative report. "
+        f"1. Start with the severity of the condition. "
+        f"2. Explicitly identify which sensors are normal or 'out of range' (HR, BR, or Stress). "
+        f"3. Command them to stop taking {substance_string} immediately. "
+        f"4. Give one urgent human-like safety suggestion (e.g., call 911, find a friend). "
+        f"Tone: Supportive but firm. No lists. Change phrasing every single time."
     )
 
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0.95,
-            max_output_tokens=500,
-            safety_settings=[
-                types.SafetySetting(
-                    category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                    threshold=types.HarmBlockThreshold.BLOCK_NONE,
-                )
-            ],
-        ),
-    )
-
-    return response.text.strip()
-
-
-# ---------- Fallback Explanation ----------
-def fallback_vitals_analysis(
-    danger_level: str,
-    substances: List[str],
-    heart_rate: int,
-    breathing_rate: int,
-):
-    substance_string = " and ".join(substances)
-
-    if danger_level == "DANGER":
-        return (
-            f"CRITICAL: Your breathing rate ({breathing_rate}) or heart rate "
-            f"({heart_rate}) is in the red zone for {substance_string}. "
-            f"Stop intake immediately and seek emergency help."
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=1.0, # Forces variation every time
+                max_output_tokens=300,
+                safety_settings=[
+                    types.SafetySetting(
+                        category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                    )
+                ],
+            ),
         )
+        return response.text.strip()
+    except Exception as e:
+        print(f"❌ AI ERROR: {e}") # This will show you why the AI fails in the terminal
+        return f"Condition: {danger_level}. Your HR is {heart_rate} and BR is {breathing_rate}. Stop taking {substance_string} and monitor your vitals closely with a friend."
 
-    if danger_level == "CAUTION":
-        return (
-            f"CAUTION: Mixing {substance_string} is unpredictable. "
-            f"Your vitals are not yet critical, but you should rest, avoid more intake, "
-            f"and monitor breathing closely."
-        )
-
-    return (
-        f"STABLE: Your current vitals do not indicate immediate danger. "
-        f"Continue monitoring yourself, stay hydrated, and avoid increasing intake."
-    )
-
-
-# ---------- Health Check ----------
-@app.get("/")
-def home():
-    return {"status": "GeekSafe backend running"}
-
-
-@app.get("/ping")
-def ping():
-    return {"status": "alive"}
-
-
-# ---------- Second Tab Endpoint ----------
+# ---------- API Endpoints ----------
 @app.post("/check-vitals-risk")
 async def check_vitals_risk(request: VitalsRequest):
     risk_level, color, score = evaluate_physiological_risk(
@@ -166,22 +137,14 @@ async def check_vitals_risk(request: VitalsRequest):
 
     normalized_substances = [s.strip().lower() for s in request.substance]
 
-    try:
-        safety_analysis = generate_vitals_analysis(
-            danger_level=risk_level,
-            score=score,
-            substances=normalized_substances,
-            heart_rate=request.heart_rate,
-            breathing_rate=request.breathing_rate,
-            stress_index=request.stress_index,
-        )
-    except Exception:
-        safety_analysis = fallback_vitals_analysis(
-            danger_level=risk_level,
-            substances=normalized_substances,
-            heart_rate=request.heart_rate,
-            breathing_rate=request.breathing_rate,
-        )
+    safety_analysis = generate_vitals_analysis(
+        danger_level=risk_level,
+        score=score,
+        substances=normalized_substances,
+        heart_rate=request.heart_rate,
+        breathing_rate=request.breathing_rate,
+        stress_index=request.stress_index,
+    )
 
     return {
         "risk": risk_level,
@@ -197,3 +160,7 @@ async def check_vitals_risk(request: VitalsRequest):
         "substances": normalized_substances,
         "medication": request.medication,
     }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

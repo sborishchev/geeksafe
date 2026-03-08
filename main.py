@@ -11,7 +11,7 @@ from google.genai import types
 from dotenv import load_dotenv
 
 # ---------- Initialization ----------
-load_dotenv()
+load_dotenv() # Loads variables from .env
 
 app = FastAPI()
 
@@ -23,8 +23,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Shared Gemini Client
-client = genai.Client(api_key=os.getenv("API_KEY"))
+# DEBUG: Check if the key is loading (Look for this in your terminal!)
+# Ensure your .env has: API_KEY=AIzaSyDNmM4EfdoBIAUawjvRn-vAwkfM0c6Tslw
+api_key_val = os.getenv("API_KEY")
+if not api_key_val:
+    print("❌ ERROR: 'API_KEY' not found in .env! Check your variable naming.")
+else:
+    print(f"✅ API_KEY detected: {api_key_val[:5]}***")
+
+client = genai.Client(api_key=api_key_val)
 RULES_FILENAME = "rules.json"
 
 # ---------- Request Models ----------
@@ -41,43 +48,22 @@ class MedicationRequest(BaseModel):
     medication: str
     substance: str
 
-# ---------- JSON Helpers (Medication) ----------
-
-def extract_json(filename):
-    try:
-        with open(filename, "r") as file:
-            return json.load(file)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return None
-
-def find_medicine(data, medicine_name):
-    medicine_name = medicine_name.strip().lower()
-    for medication in data["medications"]:
-        if medication["name"].strip().lower() == medicine_name:
-            return medication
-        if medication.get("brand", "").strip().lower() == medicine_name:
-            return medication
-    return None
-
-def find_drug_class_rule(data, drug_class, substance):
-    substance = substance.strip().lower()
-    for rule in data["rules"]:
-        if rule["drug_class"] == drug_class and substance in rule["substance"]:
-            return rule
-    return None
-
 # ---------- Core Logic Engines ----------
 
 def evaluate_physiological_risk(substances: List[str], br: int, hr: int, hrv: float, stress: int):
     norm_subs = [s.strip().lower() for s in substances]
     
-    # DANGER logic
+    # DANGER logic (Level 10: Multi-substance conflict)
     if len(norm_subs) > 1 and (br < 13 or hr > 120 or hrv < 30 or stress > 75):
         return "DANGER", "#FF3B30", 10
+    
+    # Substance-Specific Danger
     if "alcohol" in norm_subs and br < 12:
         return "DANGER", "#FF3B30", 9
     if "weed" in norm_subs and hr > 140:
         return "DANGER", "#FF3B30", 8
+    
+    # Global Fail-safe
     if hr > 155 or br < 10 or stress > 95:
         return "DANGER", "#FF3B30", 10
         
@@ -87,53 +73,31 @@ def evaluate_physiological_risk(substances: List[str], br: int, hr: int, hrv: fl
         
     return "STABLE", "#34C759", 2
 
-def medication_risk_check(med_name, sub_name, data):
-    sub_name = sub_name.strip().lower()
-    med = find_medicine(data, med_name)
-
-    if not med:
-        return {"found": False, "medication": med_name, "substance": sub_name, "message": "Not found"}
-
-    rule = find_drug_class_rule(data, med["drug_class"], sub_name)
-    
-    base_res = {
-        "found": True,
-        "medication": med["name"],
-        "brand": med.get("brand"),
-        "drug_class": med["drug_class"],
-        "substance": sub_name,
-    }
-
-    if not rule:
-        return {**base_res, "conflict": False, "message": f"No {sub_name} conflict found"}
-
-    return {**base_res, "conflict": True, "risk": rule["risk"], "reason": rule["reason"]}
-
 # ---------- AI Generation Functions ----------
 
 def generate_vitals_analysis(risk: str, score: int, subs: List[str], hr: int, br: int, stress: int):
+    # This prompt forces the 50-70 word structure you requested
     prompt = (
-        f"Generate a unique safety report in 150-200 words. Token: {time.time()}. "
-        f"Status: {risk} (score {score}/10). Substances: {' and '.join(subs)}. "
-        f"Vitals: HR {hr}, BR {br}, Stress {stress}. Tone: clinical but human."
+        f"Timestamp: {time.time()}. Act as a clinical monitor. "
+        f"Status: {risk} (Score {score}/10). Substances: {' and '.join(subs)}. "
+        f"Vitals: HR {hr} bpm, BR {br} rpm, Stress Index {stress}. "
+        f"Instructions: Write a smooth 50-70 word report. "
+        f"1. State condition severity. 2. Identify specific out-of-range sensors (HR, BR, or Stress). "
+        f"3. Command them to stop taking {' and '.join(subs)} immediately. "
+        f"4. Provide one human-like safety suggestion. Tone: empathetic but firm. No lists."
     )
+    
     response = client.models.generate_content(
         model="gemini-2.0-flash",
         contents=prompt,
         config=types.GenerateContentConfig(
-            temperature=0.95,
+            temperature=1.0, # Ensures variety every time
+            max_output_tokens=400,
             safety_settings=[types.SafetySetting(
                 category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold=types.HarmBlockThreshold.BLOCK_NONE
+                threshold=types.HarmBlockThreshold.BLOCK_NONE # Prevents refusal
             )]
         )
-    )
-    return response.text.strip()
-
-def get_med_ai_analysis(med, brand, substance):
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=f"Briefly explain risk of mixing {med} (brand {brand}) with {substance}. Max 200 chars."
     )
     return response.text.strip()
 
@@ -143,17 +107,6 @@ def get_med_ai_analysis(med, brand, substance):
 @app.get("/ping")
 def health_check():
     return {"status": "alive", "message": "GeekSafe Unified Backend Running"}
-
-@app.post("/check-risk")
-async def check_medication_risk_endpoint(request: MedicationRequest):
-    data = extract_json(RULES_FILENAME)
-    if not data: return {"error": "Could not load rules.json"}
-    
-    result = medication_risk_check(request.medication, request.substance, data)
-    if result.get("conflict"):
-        # You can toggle 'test' or actual AI here
-        result["ai_analysis"] = get_med_ai_analysis(result['medication'], result.get('brand'), result['substance'])
-    return result
 
 @app.post("/check-vitals-risk")
 async def check_vitals_risk_endpoint(request: VitalsRequest):
@@ -165,8 +118,10 @@ async def check_vitals_risk_endpoint(request: VitalsRequest):
         analysis = generate_vitals_analysis(
             risk_level, score, request.substance, request.heart_rate, request.breathing_rate, request.stress_index
         )
-    except Exception:
-        analysis = "Vitals check complete. Please monitor your status closely."
+    except Exception as e:
+        # This will tell you exactly why the AI call is failing in your terminal!
+        print(f"❌ AI CALL FAILED: {e}") 
+        analysis = f"Vitals check: {risk_level}. HR: {request.heart_rate} bpm, BR: {request.breathing_rate} rpm. Please monitor your status closely and avoid further intake."
 
     return {
         "risk": risk_level,
@@ -177,3 +132,7 @@ async def check_vitals_risk_endpoint(request: VitalsRequest):
             "hr": request.heart_rate, "br": request.breathing_rate, "stress": request.stress_index
         }
     }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
