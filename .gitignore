@@ -6,3 +6,4 @@ DerivedData/
 *.swp
 .swiftpm/
 secrets.xcconfig
+.builder/config/data.json

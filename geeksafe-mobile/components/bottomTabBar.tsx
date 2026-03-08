@@ -1,9 +1,23 @@
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Dimensions, Platform } from 'react-native';
+import { Dimensions, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAppState } from '@/services/AppState';
 
 const { width } = Dimensions.get('window');
 const BRAND_PURPLE = '#9036DE';
+
+type Substance = 'alcohol' | 'cannabis' | 'both';
+
+function SubstanceIcon({ substance, size = 32 }: { substance: Substance; size?: number }) {
+    if (substance === 'cannabis') {
+        return <MaterialCommunityIcons name="cannabis" size={size} color={BRAND_PURPLE} />;
+    }
+    if (substance === 'alcohol') {
+        return <MaterialCommunityIcons name="glass-wine" size={size} color={BRAND_PURPLE} />;
+    }
+    // both
+    return <MaterialCommunityIcons name="flask" size={size} color={BRAND_PURPLE} />;
+}
 
 export default function CustomTabBar({ state, navigation }: any) {
     const { substance, setSubstance } = useAppState();
@@ -14,7 +28,7 @@ export default function CustomTabBar({ state, navigation }: any) {
         setMenuOpen(false);
     };
 
-    const selectSubstance = (val: 'alcohol' | 'cannabis' | 'both') => {
+    const selectSubstance = (val: Substance) => {
         setSubstance(val);
         setMenuOpen(false);
     };
@@ -22,16 +36,15 @@ export default function CustomTabBar({ state, navigation }: any) {
     return (
         <View style={styles.fixedWrapper} pointerEvents="box-none">
 
-            {/* 1. Substance Popup - Positioned to clear the bar */}
+            {/* 1. Substance Popup */}
             {menuOpen && (
                 <View style={styles.popupPositioner}>
                     <View style={styles.whitePopup}>
-                        <Text style={styles.arrowUp}>⌄</Text>
-                        <Pressable onPress={() => selectSubstance('alcohol')} style={styles.menuOption}>
-                            <Text style={[styles.menuText, substance === 'alcohol' && styles.activeSubstanceText]}>Alcohol</Text>
-                        </Pressable>
                         <Pressable onPress={() => selectSubstance('cannabis')} style={styles.menuOption}>
                             <Text style={[styles.menuText, substance === 'cannabis' && styles.activeSubstanceText]}>Cannabis</Text>
+                        </Pressable>
+                        <Pressable onPress={() => selectSubstance('alcohol')} style={styles.menuOption}>
+                            <Text style={[styles.menuText, substance === 'alcohol' && styles.activeSubstanceText]}>Alcohol</Text>
                         </Pressable>
                         <Pressable onPress={() => selectSubstance('both')} style={styles.menuOption}>
                             <Text style={[styles.menuText, substance === 'both' && styles.activeSubstanceText]}>Both</Text>
@@ -40,13 +53,13 @@ export default function CustomTabBar({ state, navigation }: any) {
                 </View>
             )}
 
-            {/* 2. The Main Split Bar with Transparency */}
+            {/* 2. The Main Split Bar */}
             <View style={styles.tabBarContainer}>
                 <Pressable
                     onPress={() => handleTabPress('index')}
                     style={[
                         styles.tabSegment,
-                        { backgroundColor: state.index === 0 ? BRAND_PURPLE : 'rgba(157, 124, 255, 0.4)' }
+                        { backgroundColor: state.index === 0 ? BRAND_PURPLE : 'rgba(144, 54, 222, 0.50)' }
                     ]}
                 >
                     <Text style={styles.tabLabel}>Scan Medicine</Text>
@@ -56,19 +69,17 @@ export default function CustomTabBar({ state, navigation }: any) {
                     onPress={() => handleTabPress('safety')}
                     style={[
                         styles.tabSegment,
-                        { backgroundColor: state.index === 1 ? BRAND_PURPLE : 'rgba(157, 124, 255, 0.4)' }
+                        { backgroundColor: state.index === 1 ? BRAND_PURPLE : 'rgba(144, 54, 222, 0.50)' }
                     ]}
                 >
                     <Text style={styles.tabLabel}>Safety Scan</Text>
                 </Pressable>
             </View>
 
-            {/* 3. The Floating Circle - No Clipping */}
+            {/* 3. The Floating Circle */}
             <View style={styles.circlePositioner} pointerEvents="box-none">
                 <Pressable onPress={() => setMenuOpen(!menuOpen)} style={styles.whiteCircle}>
-                    <Text style={styles.iconText}>
-                        {substance === 'cannabis' ? '🌿' : substance === 'both' ? '➕' : '🍺'}
-                    </Text>
+                    <SubstanceIcon substance={substance as Substance} size={30} />
                 </Pressable>
             </View>
         </View>
@@ -81,7 +92,7 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        height: 140, // Height expanded to prevent clipping
+        height: 110,
         alignItems: 'center',
         justifyContent: 'flex-end',
         zIndex: 999,
@@ -90,35 +101,35 @@ const styles = StyleSheet.create({
     tabBarContainer: {
         flexDirection: 'row',
         width: '100%',
-        height: 85,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+        height: 62,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
         overflow: 'hidden',
     },
     tabSegment: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingBottom: Platform.OS === 'ios' ? 25 : 10,
+        paddingBottom: Platform.OS === 'ios' ? 8 : 0,
     },
     tabLabel: {
         color: '#FFFFFF',
-        fontSize: 14,
-        fontWeight: '700',
+        fontSize: 18,
+        fontWeight: '400',
     },
     circlePositioner: {
         position: 'absolute',
-        top: 20, // Adjusted to make circle perfectly centered on the top edge
+        top: 18,
         left: 0,
         right: 0,
         alignItems: 'center',
         zIndex: 1001,
     },
     whiteCircle: {
-        width: 66,
-        height: 66,
+        width: 60,
+        height: 60,
         backgroundColor: '#FFFFFF',
-        borderRadius: 33,
+        borderRadius: 30,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
@@ -127,39 +138,34 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         elevation: 5,
     },
-    iconText: {
-        fontSize: 32,
-    },
     popupPositioner: {
         position: 'absolute',
-        bottom: 105,
+        bottom: 80,
         zIndex: 1000,
     },
     whitePopup: {
         backgroundColor: '#FFFFFF',
-        width: 150,
-        borderRadius: 20,
-        paddingBottom: 15,
+        width: 184,
+        borderRadius: 16,
+        paddingVertical: 8,
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowRadius: 20,
-    },
-    arrowUp: {
-        color: BRAND_PURPLE,
-        fontSize: 24,
-        fontWeight: 'bold',
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: -2 },
+        elevation: 8,
     },
     menuOption: {
         paddingVertical: 10,
+        width: '100%',
+        alignItems: 'center',
     },
     menuText: {
         color: BRAND_PURPLE,
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: 18,
+        fontWeight: '400',
     },
     activeSubstanceText: {
-        fontWeight: '900',
-        textDecorationLine: 'underline',
-    }
+        fontWeight: '700',
+    },
 });
