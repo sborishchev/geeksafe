@@ -18,13 +18,21 @@ export default function RiskOverlay({ result, onClose }: RiskOverlayProps) {
     let bgColor = "";
 
     if (activeTab === 'medication') {
-        // 🔴 Red if conflict, 🟢 Green if no conflict
-        bgColor = result.conflict ? "#FF3B30" : "#34C759";
-
-        title = result.conflict ? "WARNING MESSAGE" : "STATUS: STABLE";
-        subtitle = `${result.medication} + ${result.substance}`;
-        message = result.ai_analysis;
-        extraInfo = result.reason || `Class: ${result.drug_class}`;
+        // Handle cases where medication isn't found
+        if (result.found === false) {
+            bgColor = "#8E8E93"; // Gray for info/not found
+            title = "NOT FOUND";
+            subtitle = `${result.medication}`;
+            message = result.message || "Medication not found in database";
+            extraInfo = "Please verify the spelling or consult a professional.";
+        } else {
+            // 🔴 Red if conflict, 🟢 Green if no conflict
+            bgColor = result.conflict ? "#FF3B30" : "#34C759";
+            title = result.conflict ? "WARNING MESSAGE" : "STATUS: STABLE";
+            subtitle = `${result.medication} + ${result.substance || "No substance"}`;
+            message = result.ai_analysis || result.message || (result.conflict ? "Interaction risk detected." : "No known interaction risk.");
+            extraInfo = result.reason || (result.drug_class ? `Class: ${result.drug_class}` : "");
+        }
     } else {
         // Safety Tab Logic: score > 7 is Red, else Green
         const riskScore = result.risk_score ?? result.score ?? 0;
