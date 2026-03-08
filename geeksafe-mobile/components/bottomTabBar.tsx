@@ -16,7 +16,7 @@ function SubstanceIcon({ substance, size = 32 }: { substance: Substance; size?: 
         return <MaterialCommunityIcons name="glass-wine" size={size} color={BRAND_PURPLE} />;
     }
     // both
-    return <MaterialCommunityIcons name="flask" size={size} color={BRAND_PURPLE} />;
+    return <MaterialCommunityIcons name="plus-circle" size={size} color={BRAND_PURPLE} />;
 }
 
 export default function CustomTabBar({ state, navigation }: any) {
