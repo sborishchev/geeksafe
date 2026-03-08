@@ -1,12 +1,20 @@
-import json
 import os
+import time
+import json
+from typing import Optional, List
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google import genai
-from fastapi.middleware.cors import CORSMiddleware
+from google.genai import types
+from dotenv import load_dotenv
 
-# initialize FastAPI
+# ---------- Initialization ----------
+load_dotenv()
+
 app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,155 +23,157 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Gemini client
+# Shared Gemini Client
 client = genai.Client(api_key=os.getenv("API_KEY"))
+RULES_FILENAME = "rules.json"
 
-filename = "rules.json"
+# ---------- Request Models ----------
 
+class VitalsRequest(BaseModel):
+    substance: List[str]
+    medication: Optional[str] = None
+    heart_rate: int
+    breathing_rate: int
+    hrv_sdnn: float
+    stress_index: int
 
-# expected api input:
-# {
-#   "medication": "<active_ingredient_name_or_brand_name>",
-#   "substance": "<alcohol_or_cannabis>"
-# }
-
-
-# expect api output:
-# {
-#   "found": true,
-#   "query": "<original_query>",
-#   "matched_by": "generic" or "brand",
-#   "medication": "<generic_medication_name>",
-#   "brand": "<brand_name_or_null>",
-#   "drug_class": "<drug_class_name>",
-#   "substance": ["subtances", "subtances"] or null,
-#   "conflict": true or false,
-#   "risk": "<risk_level_from_rules_json_or_null>",
-#   "reason": "<reason_from_rules_json_or_null>",
-#   "ai_analysis": "<brief_clinical_explanation_from_gemini_or_null>"
-# }
-# api  endpoint: POST /check-alcohol-risk
-
-# ---------- REQUEST MODEL ----------
 class MedicationRequest(BaseModel):
     medication: str
     substance: str
 
+# ---------- JSON Helpers (Medication) ----------
 
-# ---------- LOAD JSON ----------
 def extract_json(filename):
     try:
         with open(filename, "r") as file:
             return json.load(file)
-    except FileNotFoundError:
-        return None
-    except json.JSONDecodeError:
+    except (FileNotFoundError, json.JSONDecodeError):
         return None
 
-
-# ---------- FIND MEDICATION ----------
 def find_medicine(data, medicine_name):
     medicine_name = medicine_name.strip().lower()
-
     for medication in data["medications"]:
         if medication["name"].strip().lower() == medicine_name:
             return medication
-
         if medication.get("brand", "").strip().lower() == medicine_name:
             return medication
-
     return None
 
-
-# ---------- FIND RULE ----------
-def find_drug_class(data, drug_class, substance):
+def find_drug_class_rule(data, drug_class, substance):
     substance = substance.strip().lower()
-
-    for drug in data["rules"]:
-        if (
-            drug["drug_class"] == drug_class
-            and substance in drug["substance"]
-        ):
-            return drug
-
+    for rule in data["rules"]:
+        if rule["drug_class"] == drug_class and substance in rule["substance"]:
+            return rule
     return None
 
+# ---------- Core Logic Engines ----------
 
-# ---------- RISK ENGINE ----------
-def risk_check(medication, substance, data):
-    substance = substance.strip().lower()
+def evaluate_physiological_risk(substances: List[str], br: int, hr: int, hrv: float, stress: int):
+    norm_subs = [s.strip().lower() for s in substances]
+    
+    # DANGER logic
+    if len(norm_subs) > 1 and (br < 13 or hr > 120 or hrv < 30 or stress > 75):
+        return "DANGER", "#FF3B30", 10
+    if "alcohol" in norm_subs and br < 12:
+        return "DANGER", "#FF3B30", 9
+    if "weed" in norm_subs and hr > 140:
+        return "DANGER", "#FF3B30", 8
+    if hr > 155 or br < 10 or stress > 95:
+        return "DANGER", "#FF3B30", 10
+        
+    # CAUTION logic
+    if len(norm_subs) > 1:
+        return "CAUTION", "#FFCC00", 7
+        
+    return "STABLE", "#34C759", 2
 
-    val = find_medicine(data, medication)
+def medication_risk_check(med_name, sub_name, data):
+    sub_name = sub_name.strip().lower()
+    med = find_medicine(data, med_name)
 
-    if not val:
-        return {
-            "found": False,
-            "medication": medication,
-            "substance": substance,
-            "message": "Medication not found"
-        }
+    if not med:
+        return {"found": False, "medication": med_name, "substance": sub_name, "message": "Not found"}
 
-    rule = find_drug_class(data, val["drug_class"], substance)
-
-    if not rule:
-        return {
-            "found": True,
-            "medication": val["name"],
-            "brand": val.get("brand"),
-            "drug_class": val["drug_class"],
-            "substance": substance,
-            "conflict": False,
-            "message": f"No {substance} conflict found"
-        }
-
-    return {
+    rule = find_drug_class_rule(data, med["drug_class"], sub_name)
+    
+    base_res = {
         "found": True,
-        "medication": val["name"],
-        "brand": val.get("brand"),
-        "drug_class": val["drug_class"],
-        "substance": substance,
-        "conflict": True,
-        "risk": rule["risk"],
-        "reason": rule["reason"]
+        "medication": med["name"],
+        "brand": med.get("brand"),
+        "drug_class": med["drug_class"],
+        "substance": sub_name,
     }
 
+    if not rule:
+        return {**base_res, "conflict": False, "message": f"No {sub_name} conflict found"}
 
-# ---------- AI EXPLANATION ----------
-def get_ai_analysis(result):
-    if not result.get("conflict"):
-        return None
+    return {**base_res, "conflict": True, "risk": rule["risk"], "reason": rule["reason"]}
 
+# ---------- AI Generation Functions ----------
+
+def generate_vitals_analysis(risk: str, score: int, subs: List[str], hr: int, br: int, stress: int):
+    prompt = (
+        f"Generate a unique safety report in 150-200 words. Token: {time.time()}. "
+        f"Status: {risk} (score {score}/10). Substances: {' and '.join(subs)}. "
+        f"Vitals: HR {hr}, BR {br}, Stress {stress}. Tone: clinical but human."
+    )
     response = client.models.generate_content(
         model="gemini-2.0-flash",
-        contents=(
-            f"Briefly explain the risk of mixing {result['medication']} "
-            f"(brand {result.get('brand', 'unknown')}) with {result['substance']}. "
-            f"Max 200 characters."
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=0.95,
+            safety_settings=[types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold=types.HarmBlockThreshold.BLOCK_NONE
+            )]
         )
     )
+    return response.text.strip()
 
-    return response.text
+def get_med_ai_analysis(med, brand, substance):
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=f"Briefly explain risk of mixing {med} (brand {brand}) with {substance}. Max 200 chars."
+    )
+    return response.text.strip()
 
+# ---------- Endpoints ----------
 
-# ---------- HEALTH CHECK ----------
 @app.get("/")
-def home():
-    return {"status": "GeekSafe backend running"}
+@app.get("/ping")
+def health_check():
+    return {"status": "alive", "message": "GeekSafe Unified Backend Running"}
 
-
-# ---------- MAIN ENDPOINT ----------
 @app.post("/check-risk")
-def check_risk(request: MedicationRequest):
-    data = extract_json(filename)
-
-    if data is None:
-        return {"error": "Could not load rules.json"}
-
-    result = risk_check(request.medication, request.substance, data)
-
+async def check_medication_risk_endpoint(request: MedicationRequest):
+    data = extract_json(RULES_FILENAME)
+    if not data: return {"error": "Could not load rules.json"}
+    
+    result = medication_risk_check(request.medication, request.substance, data)
     if result.get("conflict"):
-        result["ai_analysis"] = "test"
-        # later:
-        # result["ai_analysis"] = get_ai_analysis(result)
-
+        # You can toggle 'test' or actual AI here
+        result["ai_analysis"] = get_med_ai_analysis(result['medication'], result.get('brand'), result['substance'])
     return result
+
+@app.post("/check-vitals-risk")
+async def check_vitals_risk_endpoint(request: VitalsRequest):
+    risk_level, color, score = evaluate_physiological_risk(
+        request.substance, request.breathing_rate, request.heart_rate, request.hrv_sdnn, request.stress_index
+    )
+    
+    try:
+        analysis = generate_vitals_analysis(
+            risk_level, score, request.substance, request.heart_rate, request.breathing_rate, request.stress_index
+        )
+    except Exception:
+        analysis = "Vitals check complete. Please monitor your status closely."
+
+    return {
+        "risk": risk_level,
+        "score": score,
+        "color": color,
+        "safety_analysis": analysis,
+        "vitals_confirmed": {
+            "hr": request.heart_rate, "br": request.breathing_rate, "stress": request.stress_index
+        }
+    }

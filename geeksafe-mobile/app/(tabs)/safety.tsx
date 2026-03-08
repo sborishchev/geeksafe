@@ -23,12 +23,12 @@ export default function SafetyScan() {
 
         // 2. Placeholder vitals (DANGER trigger: breathing < 13 on multiple substances)
         const testPayload = {
-            substance: substanceList,
+            substance: substanceList, // Uses your actual selection from the app
             medication: "None",
-            heart_rate: 110,
-            breathing_rate: 11, // This should trigger the "DANGER" logic
-            hrv_sdnn: 25.0,
-            stress_index: 85
+            heart_rate: 70,        // Normal heart rate
+            breathing_rate: 16,    // Normal breathing rate
+            hrv_sdnn: 50.0,        // Healthy HRV
+            stress_index: 20       // Low stress
         };
 
         try {

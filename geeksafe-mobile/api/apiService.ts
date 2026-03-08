@@ -49,16 +49,21 @@ export const checkVitalsRisk = async (vitals: VitalsData) => {
     try {
         const response = await fetch(fullUrl, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(vitals), // Sends the heart rate, breathing, etc.
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                // 🆕 THIS IS THE KEY: Bypasses the ngrok warning page
+                "ngrok-skip-browser-warning": "69420"
+            },
+            body: JSON.stringify(vitals),
         });
 
         if (!response.ok) {
-            throw new Error(`Server responded with status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`Server responded with status: ${response.status} - ${errorText}`);
         }
 
-        const data = await response.json();
-        return data;
+        return await response.json();
 
     } catch (err: any) {
         console.error("❌ Vitals Fetch Error:", err.message);
