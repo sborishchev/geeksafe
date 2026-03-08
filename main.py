@@ -3,6 +3,7 @@ import time
 import json
 from typing import Optional, List
 
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -10,10 +11,13 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
+
 # ---------- Initialization ----------
 load_dotenv()
 
+
 app = FastAPI()
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,11 +27,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Shared Gemini Client
 client = genai.Client(api_key=os.getenv("API_KEY"))
 RULES_FILENAME = "rules.json"
 
+
 # ---------- Request Models ----------
+
 
 class VitalsRequest(BaseModel):
     substance: List[str]
@@ -37,11 +44,14 @@ class VitalsRequest(BaseModel):
     hrv_sdnn: float
     stress_index: int
 
+
 class MedicationRequest(BaseModel):
     medication: str
     substance: str
 
+
 # ---------- JSON Helpers (Medication) ----------
+
 
 def extract_json(filename):
     try:
@@ -49,6 +59,7 @@ def extract_json(filename):
             return json.load(file)
     except (FileNotFoundError, json.JSONDecodeError):
         return None
+
 
 def find_medicine(data, medicine_name):
     medicine_name = medicine_name.strip().lower()
@@ -59,6 +70,7 @@ def find_medicine(data, medicine_name):
             return medication
     return None
 
+
 def find_drug_class_rule(data, drug_class, substance):
     substance = substance.strip().lower()
     for rule in data["rules"]:
@@ -66,11 +78,13 @@ def find_drug_class_rule(data, drug_class, substance):
             return rule
     return None
 
+
 # ---------- Core Logic Engines ----------
+
 
 def evaluate_physiological_risk(substances: List[str], br: int, hr: int, hrv: float, stress: int):
     norm_subs = [s.strip().lower() for s in substances]
-    
+   
     # DANGER logic
     if len(norm_subs) > 1 and (br < 13 or hr > 120 or hrv < 30 or stress > 75):
         return "DANGER", "#FF3B30", 10
@@ -80,22 +94,25 @@ def evaluate_physiological_risk(substances: List[str], br: int, hr: int, hrv: fl
         return "DANGER", "#FF3B30", 8
     if hr > 155 or br < 10 or stress > 95:
         return "DANGER", "#FF3B30", 10
-        
+       
     # CAUTION logic
     if len(norm_subs) > 1:
         return "CAUTION", "#FFCC00", 7
-        
+       
     return "STABLE", "#34C759", 2
+
 
 def medication_risk_check(med_name, sub_name, data):
     sub_name = sub_name.strip().lower()
     med = find_medicine(data, med_name)
 
+
     if not med:
         return {"found": False, "medication": med_name, "substance": sub_name, "message": "Not found"}
 
+
     rule = find_drug_class_rule(data, med["drug_class"], sub_name)
-    
+   
     base_res = {
         "found": True,
         "medication": med["name"],
@@ -104,24 +121,39 @@ def medication_risk_check(med_name, sub_name, data):
         "substance": sub_name,
     }
 
+
     if not rule:
         return {**base_res, "conflict": False, "message": f"No {sub_name} conflict found"}
 
+
     return {**base_res, "conflict": True, "risk": rule["risk"], "reason": rule["reason"]}
+
 
 # ---------- AI Generation Functions ----------
 
+
+# 1. FIX THE AI FUNCTION
 def generate_vitals_analysis(risk: str, score: int, subs: List[str], hr: int, br: int, stress: int):
+    # YOU MUST DEFINE THIS VARIABLE BEFORE THE PROMPT
+    substance_string = " and ".join(subs)
+   
     prompt = (
-        f"Generate a unique safety report in 150-200 words. Token: {time.time()}. "
-        f"Status: {risk} (score {score}/10). Substances: {' and '.join(subs)}. "
-        f"Vitals: HR {hr}, BR {br}, Stress {stress}. Tone: clinical but human."
+        f"Timestamp: {time.time()}. Act as a clinical monitor. "
+        f"Status: {risk} (Score {score}/10). Substances: {substance_string}. "
+        f"Vitals: HR {hr} bpm, BR {br} rpm, Stress Index {stress}. "
+        f"Instructions: Write a smooth 50-70 word report. "
+        f"1. State condition severity. 2. Identify out-of-range sensors (HR, BR, or Stress). "
+        f"3. Command them to stop taking {substance_string} immediately. "
+        f"4. Provide one human-like safety suggestion. Tone: empathetic but firm. No lists."
     )
+
+
     response = client.models.generate_content(
         model="gemini-2.0-flash",
         contents=prompt,
         config=types.GenerateContentConfig(
-            temperature=0.95,
+            temperature=1.0,
+            max_output_tokens=400,
             safety_settings=[types.SafetySetting(
                 category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
                 threshold=types.HarmBlockThreshold.BLOCK_NONE
@@ -130,6 +162,11 @@ def generate_vitals_analysis(risk: str, score: int, subs: List[str], hr: int, br
     )
     return response.text.strip()
 
+
+
+
+
+
 def get_med_ai_analysis(med, brand, substance):
     response = client.models.generate_content(
         model="gemini-2.0-flash",
@@ -137,43 +174,69 @@ def get_med_ai_analysis(med, brand, substance):
     )
     return response.text.strip()
 
+
 # ---------- Endpoints ----------
+
 
 @app.get("/")
 @app.get("/ping")
 def health_check():
     return {"status": "alive", "message": "GeekSafe Unified Backend Running"}
 
+
 @app.post("/check-risk")
 async def check_medication_risk_endpoint(request: MedicationRequest):
     data = extract_json(RULES_FILENAME)
     if not data: return {"error": "Could not load rules.json"}
-    
+   
     result = medication_risk_check(request.medication, request.substance, data)
     if result.get("conflict"):
         # You can toggle 'test' or actual AI here
         result["ai_analysis"] = get_med_ai_analysis(result['medication'], result.get('brand'), result['substance'])
     return result
 
+
+# 2. FIX THE ENDPOINT RETURN
+# 2. FIXED ENDPOINT
 @app.post("/check-vitals-risk")
 async def check_vitals_risk_endpoint(request: VitalsRequest):
+    # 1. Run the risk engine logic
     risk_level, color, score = evaluate_physiological_risk(
-        request.substance, request.breathing_rate, request.heart_rate, request.hrv_sdnn, request.stress_index
+        request.substance, 
+        request.breathing_rate, 
+        request.heart_rate, 
+        request.hrv_sdnn, 
+        request.stress_index
     )
     
+    # 2. Call the AI function with the correct arguments
     try:
-        analysis = generate_vitals_analysis(
-            risk_level, score, request.substance, request.heart_rate, request.breathing_rate, request.stress_index
+        # We assign the result to 'safety_analysis' so it can be returned below
+        safety_analysis = generate_vitals_analysis(
+            risk=risk_level,
+            score=score,
+            subs=request.substance,
+            hr=request.heart_rate,
+            br=request.breathing_rate,
+            stress=request.stress_index
         )
-    except Exception:
-        analysis = "Vitals check complete. Please monitor your status closely."
+    except Exception as e:
+        # Fallback if the AI call fails (e.g., API key issue or rate limit)
+        print(f"❌ AI CALL FAILED: {e}") 
+        safety_analysis = f"Vitals check complete. Risk level: {risk_level}. Please monitor your status closely."
 
+    # 3. Return the final payload
     return {
         "risk": risk_level,
         "score": score,
         "color": color,
-        "safety_analysis": analysis,
+        "safety_analysis": safety_analysis, # Now correctly defined!
         "vitals_confirmed": {
-            "hr": request.heart_rate, "br": request.breathing_rate, "stress": request.stress_index
+            "hr": request.heart_rate, 
+            "br": request.breathing_rate, 
+            "stress": request.stress_index
         }
     }
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
