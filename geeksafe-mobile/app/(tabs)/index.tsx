@@ -5,6 +5,13 @@ import { checkMedicationRisk } from "@/api/apiService";
 import Header from "@/components/successScanHeader";
 
 export default function Index() {
+  const { setActiveTab } = useAppState();
+
+  useEffect(() => {
+    setActiveTab('safety'); // 👈 This MUST happen so the Overlay knows where it is
+  }, []);
+
+
   const [medication, setMedication] = useState("");
   const { substance, setSubstance } = useAppState();
   const [result, setResult] = useState("No result yet");

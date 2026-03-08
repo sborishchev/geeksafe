@@ -1,11 +1,19 @@
 import { useAppState } from "@/services/AppState";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import Header from "@/components/successScanHeader";
 import { checkVitalsRisk } from "@/api/apiService";
+import RiskOverlay from "@/components/riskOverlay";
 
 export default function SafetyScan() {
+    const { setActiveTab } = useAppState();
+
+    useEffect(() => {
+        setActiveTab('safety');
+    }, []);
+
     const { substance } = useAppState();
+
     const [scanStatus, setScanStatus] = useState<'scanning' | 'success' | 'idle'>('idle');
     const [apiResult, setApiResult] = useState<any>(null);
 
@@ -13,22 +21,15 @@ export default function SafetyScan() {
         setScanStatus('scanning');
         setApiResult(null);
 
-        // 1. Map state to Backend List[str]
-        let substanceList: string[] = [];
-        if (substance === 'both') {
-            substanceList = ['alcohol', 'weed'];
-        } else {
-            substanceList = [substance];
-        }
+        let substanceList: string[] = substance === 'both' ? ['alcohol', 'weed'] : [substance];
 
-        // 2. Placeholder vitals (DANGER trigger: breathing < 13 on multiple substances)
         const testPayload = {
-            substance: substanceList, // Uses your actual selection from the app
+            substance: substanceList,
             medication: "None",
-            heart_rate: 70,        // Normal heart rate
-            breathing_rate: 16,    // Normal breathing rate
-            hrv_sdnn: 50.0,        // Healthy HRV
-            stress_index: 20       // Low stress
+            heart_rate: 70,
+            breathing_rate: 16,
+            hrv_sdnn: 50.0,
+            stress_index: 20
         };
 
         try {
@@ -50,7 +51,6 @@ export default function SafetyScan() {
                 <ScrollView contentContainerStyle={{ paddingVertical: 20 }}>
                     <Text style={styles.title}>Safety Monitor</Text>
 
-                    {/* Test Button */}
                     <Pressable
                         style={[styles.testButton, scanStatus === 'scanning' && { opacity: 0.6 }]}
                         onPress={runTestScan}
@@ -61,16 +61,6 @@ export default function SafetyScan() {
                         </Text>
                     </Pressable>
 
-                    {/* Display Result if exists */}
-                    {apiResult && (
-                        <View style={[styles.resultCard, { borderColor: apiResult.color || '#9036DE' }]}>
-                            <Text style={[styles.riskTitle, { color: apiResult.color }]}>
-                                {apiResult.risk} (Score: {apiResult.score}/10)
-                            </Text>
-                            <Text style={styles.analysisText}>{apiResult.safety_analysis}</Text>
-                        </View>
-                    )}
-
                     <View style={styles.cameraPlaceholder}>
                         <Text style={styles.placeholderText}>
                             {scanStatus === 'scanning' ? "Scanning Face..." : "Camera Feed Placeholder"}
@@ -79,6 +69,15 @@ export default function SafetyScan() {
                     </View>
                 </ScrollView>
             </SafeAreaView>
+
+            {/* 👈 2. Add Overlay here. It will stay hidden until apiResult is set */}
+            <RiskOverlay
+                result={apiResult}
+                onClose={() => {
+                    setApiResult(null);
+                    setScanStatus('idle');
+                }}
+            />
         </View>
     );
 }
