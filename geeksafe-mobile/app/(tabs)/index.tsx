@@ -1,39 +1,56 @@
+import { useAppState } from "@/services/AppState";
 import React, { useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, SafeAreaView } from "react-native";
+import { checkMedicationRisk } from "@/api/apiService";
 
 export default function Index() {
   const [medication, setMedication] = useState("");
-  const [substance, setSubstance] = useState("alcohol");
+  const { substance, setSubstance } = useAppState();
   const [result, setResult] = useState("No result yet");
 
-  // 🔴 CHANGE THIS
-  const API_URL = "https://obeyingly-apologal-austin.ngrok-free.dev/check-risk";
+  // // 🔴 CHANGE THIS
+  // const API_URL = "https://obeyingly-apologal-austin.ngrok-free.dev/check-risk";
 
-  async function checkRisk() {
+  // async function checkRisk() {
+  //   try {
+  //     const response = await fetch(API_URL, {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json"
+  //       },
+  //       body: JSON.stringify({
+  //         medication,
+  //         substance
+  //       })
+  //     });
+
+  //     const data = await response.json();
+
+  //     if (data.conflict) {
+  //       setResult(
+  //         `⚠️ Conflict Found\n\nMedication: ${data.medication}\nBrand: ${data.brand}\nRisk: ${data.risk}\nReason: ${data.reason}`
+  //       );
+  //     } else if (data.message) {
+  //       setResult(data.message);
+  //     } else {
+  //       setResult("No conflict found");
+  //     }
+
+  //   } catch (err: any) {
+  //     setResult("Error: " + err.message);
+  //   }
+  // }
+
+  async function handleCheck() {
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          medication,
-          substance
-        })
-      });
+      const data = await checkMedicationRisk(medication, substance);
+      console.log("Full Backend Response:", data); // TODO: REMOVE? Check your VS Code terminal for this!
 
-      const data = await response.json();
-
-      if (data.conflict) {
-        setResult(
-          `⚠️ Conflict Found\n\nMedication: ${data.medication}\nBrand: ${data.brand}\nRisk: ${data.risk}\nReason: ${data.reason}`
-        );
-      } else if (data.message) {
-        setResult(data.message);
+      if (data.conflict === true || data.risk_level === 'high') {
+        setResult(`⚠️ DANGER: ${data.reason}`);
       } else {
-        setResult("No conflict found");
+        setResult(data.message || "No conflict found");
       }
-
     } catch (err: any) {
       setResult("Error: " + err.message);
     }
@@ -41,40 +58,34 @@ export default function Index() {
 
   return (
     <SafeAreaView style={styles.container}>
-
       <Text style={styles.title}>GeekSafe</Text>
 
       <TextInput
         style={styles.input}
-        placeholder="Medication or brand"
+        placeholder="Scan or type medication..."
         value={medication}
         onChangeText={setMedication}
       />
 
       <View style={styles.toggleRow}>
-        <Pressable
-          style={[styles.toggle, substance === "alcohol" && styles.active]}
-          onPress={() => setSubstance("alcohol")}
-        >
-          <Text style={styles.toggleText}>Alcohol</Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.toggle, substance === "cannabis" && styles.active]}
-          onPress={() => setSubstance("cannabis")}
-        >
-          <Text style={styles.toggleText}>Cannabis</Text>
-        </Pressable>
+        {['alcohol', 'cannabis', 'both'].map((s) => (
+          <Pressable
+            key={s}
+            style={[styles.toggle, substance === s && styles.active]}
+            onPress={() => setSubstance(s as any)}
+          >
+            <Text style={styles.toggleText}>{s.charAt(0).toUpperCase() + s.slice(1)}</Text>
+          </Pressable>
+        ))}
       </View>
 
-      <Pressable style={styles.button} onPress={checkRisk}>
+      <Pressable style={styles.button} onPress={handleCheck}>
         <Text style={styles.buttonText}>Check Risk</Text>
       </Pressable>
 
       <View style={styles.resultBox}>
         <Text>{result}</Text>
       </View>
-
     </SafeAreaView>
   );
 }
