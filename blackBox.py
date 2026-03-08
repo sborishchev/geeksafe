@@ -24,7 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+client = genai.Client(api_key=os.getenv("API_KEY"))
 
 
 # ---------- Request Model ----------
