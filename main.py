@@ -41,6 +41,9 @@ class MedicationRequest(BaseModel):
     medication: str
     substance: str
 
+class ImageRequest(BaseModel):
+    image_base64: str
+
 # ---------- JSON Helpers (Medication) ----------
 
 def extract_json(filename):
@@ -177,3 +180,17 @@ async def check_vitals_risk_endpoint(request: VitalsRequest):
             "hr": request.heart_rate, "br": request.breathing_rate, "stress": request.stress_index
         }
     }
+
+@app.post("/extract-medication")
+async def extract_medication_endpoint(request: ImageRequest):
+    try:
+        # Send the base64 image to Gemini for text extraction
+        prompt = "Look at this medication label. Extract ONLY the medication or active ingredient name. Do not include dosages, instructions, brand names if active ingredient is present, or any other text. Just the core medication name. If you cannot find one, reply with 'Unknown'."
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[prompt, types.Part.from_bytes(data=request.image_base64.encode("utf-8"), mime_type="image/jpeg")]
+        )
+        return {"medication": response.text.strip()}
+    except Exception as e:
+        print(f"⚠️ OCR ERROR: {e}")
+        return {"error": "Failed to extract medication from image."}

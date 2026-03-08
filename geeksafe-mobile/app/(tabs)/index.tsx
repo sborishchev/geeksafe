@@ -1,9 +1,11 @@
 import { useAppState } from "@/services/AppState";
-import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, SafeAreaView, ScrollView } from "react-native";
-import { checkMedicationRisk } from "@/api/apiService";
+import React, { useState, useEffect, useRef } from "react";
+import { View, Text, TextInput, Pressable, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator } from "react-native";
+import { checkMedicationRisk, extractMedicationFromImage } from "@/api/apiService";
 import Header from "@/components/successScanHeader";
 import RiskOverlay from "@/components/riskOverlay"; // 👈 1. Import the Overlay
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function Index() {
   const { setActiveTab } = useAppState();
@@ -20,6 +22,45 @@ export default function Index() {
   const [apiResult, setApiResult] = useState<any>(null);
   const [result, setResult] = useState("No result yet");
   const [scanStatus, setScanStatus] = useState<'scanning' | 'success' | 'idle'>('idle');
+
+  // Camera state
+  const [permission, requestPermission] = useCameraPermissions();
+  const [isScanningMode, setIsScanningMode] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const cameraRef = useRef<CameraView>(null);
+
+  const startScanning = async () => {
+    if (!permission?.granted) {
+      const res = await requestPermission();
+      if (!res.granted) {
+        alert("Camera permission is required to scan labels.");
+        return;
+      }
+    }
+    setIsScanningMode(true);
+  };
+
+  const takePicture = async () => {
+    if (!cameraRef.current) return;
+    setIsExtracting(true);
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.5 });
+      if (photo?.base64) {
+        const extractRes = await extractMedicationFromImage(photo.base64);
+        if (extractRes.medication && extractRes.medication !== "Unknown") {
+          setMedication(extractRes.medication);
+        } else {
+          alert("Could not identify medication. Please try again or type manually.");
+        }
+      }
+    } catch (err) {
+      console.error("Camera Error:", err);
+      alert("Failed to extract text from image. Make sure the backend is running.");
+    } finally {
+      setIsExtracting(false);
+      setIsScanningMode(false);
+    }
+  };
 
   async function handleCheck() {
     setScanStatus('scanning');
@@ -51,12 +92,17 @@ export default function Index() {
         <ScrollView contentContainerStyle={{ paddingVertical: 20 }}>
           <Text style={styles.title}>GeekSafe</Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Scan or type medication..."
-            value={medication}
-            onChangeText={setMedication}
-          />
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Scan or type medication..."
+              value={medication}
+              onChangeText={setMedication}
+            />
+            <Pressable style={styles.scanIconButton} onPress={startScanning}>
+              <Ionicons name="scan" size={24} color="#2563eb" />
+            </Pressable>
+          </View>
 
           <View style={styles.toggleRow}>
             {['alcohol', 'cannabis', 'both'].map((s) => (
@@ -90,6 +136,40 @@ export default function Index() {
           setScanStatus('idle');
         }}
       />
+
+      {/* Camera Scanning Overlay */}
+      {isScanningMode && (
+        <View style={styles.cameraContainer}>
+          <CameraView 
+            ref={cameraRef} 
+            style={styles.camera} 
+            facing="back"
+          >
+            <SafeAreaView style={styles.cameraControlsContainer}>
+              <View style={styles.cameraHeader}>
+                <Pressable onPress={() => setIsScanningMode(false)} style={styles.closeButton}>
+                  <Ionicons name="close" size={32} color="white" />
+                </Pressable>
+              </View>
+
+              <View style={styles.cameraFooter}>
+                <Text style={styles.cameraInstruction}>
+                  Align label in view and capture
+                </Text>
+                {isExtracting ? (
+                  <View style={styles.captureButtonLoading}>
+                    <ActivityIndicator size="large" color="#ffffff" />
+                  </View>
+                ) : (
+                  <Pressable onPress={takePicture} style={styles.captureButton}>
+                    <View style={styles.captureButtonInner} />
+                  </Pressable>
+                )}
+              </View>
+            </SafeAreaView>
+          </CameraView>
+        </View>
+      )}
     </View>
   );
 }
@@ -106,14 +186,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     marginTop: 10
   },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    padding: 14,
-    borderRadius: 8,
-    backgroundColor: "white",
-    marginBottom: 16
-  },
+
   toggleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -152,5 +225,84 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     minHeight: 120,
     marginBottom: 100
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 14,
+    borderRadius: 8,
+    backgroundColor: "white",
+  },
+  scanIconButton: {
+    padding: 14,
+    marginLeft: 8,
+    backgroundColor: "#e0e7ff",
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cameraContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "black",
+    zIndex: 100,
+  },
+  camera: {
+    flex: 1,
+  },
+  cameraControlsContainer: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  cameraHeader: {
+    padding: 20,
+    alignItems: "flex-end",
+  },
+  closeButton: {
+    padding: 10,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 20,
+  },
+  cameraFooter: {
+    paddingBottom: 40,
+    alignItems: "center",
+  },
+  cameraInstruction: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 20,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    overflow: "hidden"
+  },
+  captureButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  captureButtonInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "white",
+  },
+  captureButtonLoading: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   }
 });

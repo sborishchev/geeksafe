@@ -70,3 +70,27 @@ export const checkVitalsRisk = async (vitals: VitalsData) => {
         throw new Error("Failed to connect to backend for vitals check.");
     }
 };
+
+export const extractMedicationFromImage = async (base64Image: string) => {
+    const fullUrl = `${NGROK_URL}/extract-medication`;
+    console.log("🚀 Extracting medication via:", fullUrl);
+
+    try {
+        const response = await fetch(fullUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ image_base64: base64Image }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server responded with status: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (err: any) {
+        console.error("❌ Image Extraction Error:", err.message);
+        throw new Error("Failed to extract medication from image.");
+    }
+};
